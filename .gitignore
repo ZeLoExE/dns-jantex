@@ -1,0 +1,27 @@
+# Build artifacts
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Config (user settings)
+config/settings.json
+config/custom_dns.json
+
+# Installer output
+DNSJantex-Setup.exe
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
