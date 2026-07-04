@@ -120,6 +120,11 @@ class MainWindow(QMainWindow):
             if last_provider >= 0:
                 QTimer.singleShot(500, lambda: self._apply_dns_by_index(last_provider))
 
+        # Periodic DNS status check (every 30 seconds)
+        self._dns_status_timer = QTimer(self)
+        self._dns_status_timer.timeout.connect(self._periodic_dns_check)
+        self._dns_status_timer.start(30000)
+
     def _load_icon(self, name: str, color: str = None) -> QIcon:
         """Load an SVG icon, replacing currentColor with the given color."""
         from PySide6.QtSvg import QSvgRenderer
@@ -389,8 +394,29 @@ class MainWindow(QMainWindow):
                 adapter.ip_address,
                 [provider_name] if provider_name else adapter.dns_servers
             )
+            self._check_dns_status(adapter.dns_servers)
         else:
             self.network_card.update_info(None, None, None)
+
+    def _check_dns_status(self, dns_servers):
+        """Ping the first DNS server and set the status dot color."""
+        if not dns_servers:
+            return
+        dns = dns_servers[0].strip()
+        ms = DNSManager.ping_dns_fast(dns, timeout_ms=2000)
+        if ms is None:
+            color = "#f44336"  # red — unreachable
+        elif ms < 100:
+            color = "#4caf50"  # green — fast
+        else:
+            color = "#ff9800"  # yellow — slow
+        self.network_card.set_dns_status(color)
+
+    def _periodic_dns_check(self):
+        """Periodically ping the current DNS to update status indicator."""
+        adapter = DNSManager.get_current_dns_info()
+        if adapter and adapter.dns_servers:
+            self._check_dns_status(adapter.dns_servers)
 
     def _match_dns_to_provider(self, dns_servers):
         """Return provider name if DNS matches a known provider, else 'Custom DNS'."""

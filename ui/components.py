@@ -844,7 +844,7 @@ class NetworkInfoCard(QFrame):
         self._grid.setSpacing(40)
         grid = self._grid
 
-        for label_text, attr in [("Active Adapter", "adapter_name"), ("IPv4 Address", "ip_address"), ("Current DNS", "current_dns")]:
+        for label_text, attr in [("Active Adapter", "adapter_name"), ("IPv4 Address", "ip_address")]:
             col = QVBoxLayout()
             l = QLabel(label_text)
             l.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
@@ -854,6 +854,27 @@ class NetworkInfoCard(QFrame):
             col.addWidget(l)
             col.addWidget(val)
             grid.addLayout(col)
+
+        # Current DNS with status dot
+        dns_col = QVBoxLayout()
+        dns_label = QLabel("Current DNS")
+        dns_label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
+        dns_col.addWidget(dns_label)
+
+        dns_row = QHBoxLayout()
+        dns_row.setSpacing(6)
+        self.current_dns = QLabel("--")
+        self.current_dns.setStyleSheet(f"color: {self.ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+        dns_row.addWidget(self.current_dns)
+
+        self._status_dot = QLabel()
+        self._status_dot.setFixedSize(10, 10)
+        self._status_dot.setStyleSheet(f"background-color: {self.ss.text_secondary}; border-radius: 5px;")
+        dns_row.addWidget(self._status_dot)
+        dns_row.addStretch()
+
+        dns_col.addLayout(dns_row)
+        grid.addLayout(dns_col)
 
         grid.addStretch()
         v.addLayout(grid)
@@ -873,6 +894,11 @@ class NetworkInfoCard(QFrame):
                 background: transparent;
                 border: none;
             """)
+        self._status_dot.setStyleSheet(f"background-color: {self.ss.text_secondary}; border-radius: 5px;")
+
+    def set_dns_status(self, color: str):
+        """Update the status dot color: '#4caf50' green, '#ff9800' yellow, '#f44336' red."""
+        self._status_dot.setStyleSheet(f"background-color: {color}; border-radius: 5px;")
 
     def refresh_theme(self, ss: StyleSheet):
         self.ss = ss
