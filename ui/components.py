@@ -935,8 +935,8 @@ class MiniBarChart(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.bars = []
-        self.setMinimumSize(120, 40)
-        self.setMaximumHeight(45)
+        self.setMinimumSize(120, 30)
+        self.setMaximumHeight(40)
 
     def set_data(self, values: list[float]):
         self.bars = values[-20:]
@@ -969,8 +969,8 @@ class MiniLineChart(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.points = []
-        self.setMinimumSize(120, 40)
-        self.setMaximumHeight(45)
+        self.setMinimumSize(120, 30)
+        self.setMaximumHeight(40)
 
     def set_data(self, values: list[float]):
         self.points = values[-20:]
@@ -1039,8 +1039,8 @@ class NetworkInfoCard(QFrame):
         self.setStyleSheet(f"QFrame {{ background-color: {self.ss.card}; border: 1px solid {self.ss.border}; border-radius: 12px; }}")
 
         v = QVBoxLayout(self)
-        v.setContentsMargins(12, 10, 12, 10)
-        v.setSpacing(8)
+        v.setContentsMargins(10, 6, 10, 6)
+        v.setSpacing(6)
 
         title = QLabel("Network Status")
         title.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
@@ -1061,7 +1061,7 @@ class NetworkInfoCard(QFrame):
         # Internet Status
         inet_card = _sub_card(self.ss)
         inet_l = QVBoxLayout(inet_card)
-        inet_l.setContentsMargins(10, 8, 10, 8)
+        inet_l.setContentsMargins(8, 5, 8, 5)
         inet_l.setSpacing(2)
 
         inet_top = QHBoxLayout()
@@ -1095,7 +1095,7 @@ class NetworkInfoCard(QFrame):
         # IPv4 Address
         ip_card = _sub_card(self.ss)
         ip_l = QVBoxLayout(ip_card)
-        ip_l.setContentsMargins(10, 8, 10, 8)
+        ip_l.setContentsMargins(8, 5, 8, 5)
         ip_l.setSpacing(4)
 
         ip_top = QHBoxLayout()
@@ -1134,7 +1134,7 @@ class NetworkInfoCard(QFrame):
         # Uptime
         uptime_card = _sub_card(self.ss)
         uptime_l = QVBoxLayout(uptime_card)
-        uptime_l.setContentsMargins(10, 8, 10, 8)
+        uptime_l.setContentsMargins(8, 5, 8, 5)
         uptime_l.setSpacing(2)
         uptime_row = QHBoxLayout()
         uptime_row.setSpacing(4)
@@ -1157,7 +1157,7 @@ class NetworkInfoCard(QFrame):
         # Data Usage
         usage_card = _sub_card(self.ss)
         usage_l = QVBoxLayout(usage_card)
-        usage_l.setContentsMargins(10, 8, 10, 8)
+        usage_l.setContentsMargins(8, 5, 8, 5)
         usage_l.setSpacing(2)
         usage_row = QHBoxLayout()
         usage_row.setSpacing(4)
@@ -1180,7 +1180,7 @@ class NetworkInfoCard(QFrame):
         # DNS in Use
         dns_card = _sub_card(self.ss)
         dns_l = QVBoxLayout(dns_card)
-        dns_l.setContentsMargins(10, 8, 10, 8)
+        dns_l.setContentsMargins(8, 5, 8, 5)
         dns_l.setSpacing(2)
         dns_top_row = QHBoxLayout()
         dns_top_row.setSpacing(4)
@@ -1218,7 +1218,7 @@ class NetworkInfoCard(QFrame):
         # === RIGHT COLUMN (tall card: charts + button) ===
         right_card = _sub_card(self.ss)
         right_l = QVBoxLayout(right_card)
-        right_l.setContentsMargins(10, 8, 10, 8)
+        right_l.setContentsMargins(8, 5, 8, 5)
         right_l.setSpacing(6)
 
         # Recent Ping header
@@ -1257,7 +1257,7 @@ class NetworkInfoCard(QFrame):
 
         # Test Speed button
         self.speed_btn = QPushButton("Test Speed & Stability")
-        self.speed_btn.setFixedHeight(38)
+        self.speed_btn.setFixedHeight(30)
         self.speed_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.ss.accent};
@@ -1353,8 +1353,8 @@ class CustomDNSCard(QFrame):
         self.setMinimumHeight(90)
 
         v = QVBoxLayout(self)
-        v.setContentsMargins(16, 12, 16, 12)
-        v.setSpacing(10)
+        v.setContentsMargins(10, 6, 10, 6)
+        v.setSpacing(6)
 
         title = QLabel("Custom DNS")
         title.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")

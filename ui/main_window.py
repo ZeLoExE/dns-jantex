@@ -201,7 +201,7 @@ class MainWindow(QMainWindow):
 
         # Main layout
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(24, 24, 24, 24)
+        main_layout.setContentsMargins(20, 16, 20, 16)
         main_layout.setSpacing(20)
 
         # Header
@@ -238,9 +238,9 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(header_layout)
 
-        # Network info + Custom DNS cards side by side
+        # Network info + Custom DNS cards side by side (compact, fixed height)
         top_cards_layout = QHBoxLayout()
-        top_cards_layout.setSpacing(12)
+        top_cards_layout.setSpacing(8)
 
         self.network_card = NetworkInfoCard(self.style_sheet)
         self.network_card.speed_test_clicked.connect(self._on_ping_clicked)
@@ -252,8 +252,9 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(top_cards_layout)
 
-        # DNS settings card
+        # DNS settings card (stretches to fill remaining space)
         self.dns_card = DNSCard(self.style_sheet)
+        self.dns_card.setMinimumHeight(300)
         self._load_all_providers()
         self.dns_card.provider_changed.connect(self._on_provider_changed)
         self.dns_card.manage_clicked.connect(self._open_custom_dns_manager)
