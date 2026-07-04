@@ -945,7 +945,7 @@ class NetworkInfoCard(QFrame):
         v.setContentsMargins(16, 12, 16, 12)
         v.setSpacing(10)
 
-        title = QLabel("Network Information")
+        title = QLabel("Network Status")
         title.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
         v.addWidget(title)
 
@@ -1058,7 +1058,7 @@ class NetworkInfoCard(QFrame):
         self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 12px; }}")
         for lbl in self.findChildren(QLabel):
             txt = lbl.text()
-            if txt == "Network Information":
+            if txt == "Network Status":
                 lbl.setStyleSheet(f"color: {ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
             elif txt in ["Active Adapter", "IPv4 Address", "Current DNS"]:
                 lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
