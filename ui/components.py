@@ -37,7 +37,7 @@ class ProviderRow(QFrame):
     row_clicked = Signal()
 
     def __init__(self, name: str, primary: str, secondary: str,
-                 style_sheet: StyleSheet, index: int, parent=None, category: str = "international"):
+                 style_sheet: StyleSheet, index: int, parent=None, category: str = "international", tags: list = None):
         super().__init__(parent)
         self.name = name
         self.primary = primary
@@ -45,6 +45,7 @@ class ProviderRow(QFrame):
         self.ss = style_sheet
         self.index = index
         self.category = category
+        self.tags = tags or []
         self._search_visible = True
         self.latency_label = None
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -463,6 +464,30 @@ class DNSCard(QFrame):
 
         v.addLayout(title_row)
 
+        # Tag filter buttons
+        self.filter_tag = None
+        self._tag_row = QHBoxLayout()
+        self._tag_row.setSpacing(6)
+        self._tag_buttons = {}
+        tag_defs = [
+            ("gaming", "Gaming"),
+            ("adblock", "Ad Blocking"),
+            ("family", "Family Safe"),
+            ("privacy", "Privacy"),
+            ("security", "Security"),
+            ("anti-sanction", "Anti-Sanction"),
+        ]
+        for tag_key, tag_label in tag_defs:
+            btn = QPushButton(tag_label)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setStyleSheet(self._tag_btn_style(False))
+            btn.clicked.connect(lambda checked, k=tag_key: self._toggle_tag_filter(k))
+            self._tag_row.addWidget(btn)
+            self._tag_buttons[tag_key] = btn
+        self._tag_row.addStretch()
+        v.addLayout(self._tag_row)
+
         # Search box
         self._search_row = QHBoxLayout()
         self._search_row.setContentsMargins(0, 0, 0, 0)
@@ -536,8 +561,8 @@ class DNSCard(QFrame):
         self._scroll.setWidget(self.container)
         v.addWidget(self._scroll, 1)
 
-    def add_provider(self, name: str, primary: str, secondary: str, category: str = "international"):
-        row = ProviderRow(name, primary, secondary, self.ss, len(self.rows), category=category)
+    def add_provider(self, name: str, primary: str, secondary: str, category: str = "international", tags: list = None):
+        row = ProviderRow(name, primary, secondary, self.ss, len(self.rows), category=category, tags=tags)
         self.button_group.addButton(row.radio)
         row.radio.toggled.connect(lambda checked, i=len(self.rows): self.provider_changed.emit(i))
         # Make entire row clickable
@@ -668,6 +693,44 @@ class DNSCard(QFrame):
             """)
         self._rebuild_list()
 
+    def _tag_btn_style(self, active: bool) -> str:
+        if active:
+            return f"""
+                QPushButton {{
+                    background-color: {self.ss.accent};
+                    color: white;
+                    border: 1px solid {self.ss.accent};
+                    border-radius: 6px;
+                    padding: 3px 10px;
+                    font-size: 11px;
+                }}
+            """
+        return f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {self.ss.text_secondary};
+                border: 1px solid {self.ss.border};
+                border-radius: 6px;
+                padding: 3px 10px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.ss.hover};
+                color: {self.ss.text};
+                border-color: {self.ss.accent};
+            }}
+        """
+
+    def _toggle_tag_filter(self, tag: str):
+        """Toggle a tag filter. Clicking the same tag again disables it."""
+        if self.filter_tag == tag:
+            self.filter_tag = None
+        else:
+            self.filter_tag = tag
+        for key, btn in self._tag_buttons.items():
+            btn.setStyleSheet(self._tag_btn_style(key == self.filter_tag))
+        self._rebuild_list()
+
     def _rebuild_list(self, selected_name: Optional[str] = None):
         """Rebuild the provider list after sorting."""
         # Disconnect all radio signals temporarily
@@ -685,10 +748,13 @@ class DNSCard(QFrame):
                 widget.setParent(None)
                 widget.hide()
 
-        # Re-add rows in new order, filtered by category and search
+        # Re-add rows in new order, filtered by category, tag, and search
         visible_idx = 0
         for i, row in enumerate(self.rows):
             if self.filter_iran and row.category != "iran":
+                row.hide()
+                continue
+            if self.filter_tag and self.filter_tag not in row.tags:
                 row.hide()
                 continue
             if hasattr(row, '_search_visible') and not row._search_visible:

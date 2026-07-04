@@ -441,7 +441,7 @@ class MainWindow(QMainWindow):
 
         # Add built-in providers
         for provider in DNS_PROVIDERS:
-            self.dns_card.add_provider(provider.name, provider.primary, provider.secondary, provider.category)
+            self.dns_card.add_provider(provider.name, provider.primary, provider.secondary, provider.category, provider.tags)
 
         # Add custom providers
         for entry in load_custom_dns():
