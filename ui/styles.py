@@ -13,6 +13,7 @@ class Colors:
     DARK_BORDER = "#404040"
     DARK_TEXT = "#ffffff"
     DARK_TEXT_SECONDARY = "#b0b0b0"
+    DARK_TEXT_TERTIARY = "#c8c8c8"
     DARK_ACCENT = "#f57c00"
     DARK_ACCENT_HOVER = "#ff9800"
     DARK_SUCCESS = "#4caf50"
@@ -26,6 +27,7 @@ class Colors:
     LIGHT_BORDER = "#e0e0e0"
     LIGHT_TEXT = "#1e1e1e"
     LIGHT_TEXT_SECONDARY = "#666666"
+    LIGHT_TEXT_TERTIARY = "#555555"
     LIGHT_ACCENT = "#f57c00"
     LIGHT_ACCENT_HOVER = "#e65100"
     LIGHT_SUCCESS = "#4caf50"
@@ -49,6 +51,7 @@ class StyleSheet:
             self.border = Colors.DARK_BORDER
             self.text = Colors.DARK_TEXT
             self.text_secondary = Colors.DARK_TEXT_SECONDARY
+            self.text_tertiary = Colors.DARK_TEXT_TERTIARY
             self.accent = Colors.DARK_ACCENT
             self.accent_hover = Colors.DARK_ACCENT_HOVER
             self.success = Colors.DARK_SUCCESS
@@ -61,6 +64,7 @@ class StyleSheet:
             self.border = Colors.LIGHT_BORDER
             self.text = Colors.LIGHT_TEXT
             self.text_secondary = Colors.LIGHT_TEXT_SECONDARY
+            self.text_tertiary = Colors.LIGHT_TEXT_TERTIARY
             self.accent = Colors.LIGHT_ACCENT
             self.accent_hover = Colors.LIGHT_ACCENT_HOVER
             self.success = Colors.LIGHT_SUCCESS
