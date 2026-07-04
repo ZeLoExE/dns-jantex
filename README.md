@@ -5,7 +5,7 @@
 <h1 align="center">DNS Jantex</h1>
 
 <p align="center">
-  A modern Windows DNS management app with 50+ providers, latency testing, search/filter, and Persian support.
+  A modern Windows DNS management app with 50+ providers, latency testing, Smart Connect, and Persian support.
 </p>
 
 ---
@@ -13,13 +13,17 @@
 ## Features
 
 - **50+ DNS providers** — Google, Cloudflare, Quad9, AdGuard, and many more
+- **Smart Connect** — one-click benchmark that auto-selects the fastest provider
+- **Tag filters** — filter providers by Gaming, Ad Blocking, Family Safe, Privacy, Security, or Anti-Sanction
 - **Iran DNS filter** — quick access to local providers (Shecan, Hamrahe Aval, Electro, etc.)
 - **Latency test** — ping all providers to find the fastest one for your connection
 - **Search & filter** — find any DNS provider instantly by name or IP
 - **Sort by speed** — toggle between lowest/highest latency
-- **Custom DNS** — add your own DNS servers
-- **Dark & light themes** — switch with one click
-- **English & Persian** — full Farsi language support with RTL layout
+- **Custom DNS** — add your own DNS servers with a dedicated input card
+- **DNS analytics** — live uptime, success rate, and query count displayed in real time
+- **Status indicator** — green/yellow/red dot shows DNS health at a glance
+- **Dark & light themes** — switch with one click, theme-aware SVG icons
+- **English & Persian** — full Farsi language support
 - **One-click apply** — fast DNS switching with instant confirmation
 - **Flush & reset** — clear DNS cache or restore automatic (DHCP) settings
 - **Installer** — desktop and Start Menu shortcuts included
@@ -50,9 +54,9 @@ Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jan
 ## Usage
 
 1. Run `DNSChanger.exe` as Administrator
-2. Search or browse for a DNS provider
+2. Click **Smart Connect** to auto-find the fastest DNS, or browse the list
 3. Click **Apply** to set the DNS
-4. Use **Test Latency** to compare speeds
+4. Use **Test Latency** to compare speeds manually
 5. Use **Default DNS** to reset to automatic
 
 ## Building from Source
@@ -90,6 +94,7 @@ dns-jantex/
 │   ├── en.json
 │   └── fa.json
 ├── assets/                 # Icons and images
+│   └── icons/              # SVG icon set
 ├── build.spec              # PyInstaller config
 └── installer.nsi           # NSIS installer script
 ```
