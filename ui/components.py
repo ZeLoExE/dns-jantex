@@ -836,9 +836,9 @@ class NetworkInfoCard(QFrame):
 
         root = QHBoxLayout(self)
         root.setContentsMargins(16, 12, 16, 12)
-        root.setSpacing(24)
+        root.setSpacing(0)
 
-        # Left side: network info
+        # Left side: network info (~65%)
         left = QVBoxLayout()
         left.setSpacing(10)
 
@@ -863,15 +863,22 @@ class NetworkInfoCard(QFrame):
 
         grid.addStretch()
         left.addLayout(grid)
-        root.addLayout(left, 1)
+        root.addLayout(left, 65)
 
-        # Right side: custom DNS inputs
-        right = QVBoxLayout()
-        right.setSpacing(6)
+        # Vertical divider
+        self._divider = QFrame()
+        self._divider.setFixedWidth(1)
+        self._divider.setStyleSheet(f"background-color: {self.ss.border};")
+        root.addWidget(self._divider)
+
+        # Right side: custom DNS (~35%)
+        right_container = QVBoxLayout()
+        right_container.setContentsMargins(24, 0, 0, 0)
+        right_container.setSpacing(6)
 
         right_title = QLabel("Custom DNS")
         right_title.setStyleSheet(f"color: {self.ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
-        right.addWidget(right_title)
+        right_container.addWidget(right_title)
 
         inputs_row = QHBoxLayout()
         inputs_row.setSpacing(10)
@@ -900,7 +907,7 @@ class NetworkInfoCard(QFrame):
         sec_col.addWidget(self.secondary_input)
         inputs_row.addLayout(sec_col)
 
-        right.addLayout(inputs_row)
+        right_container.addLayout(inputs_row)
 
         # Apply button
         self.apply_custom_btn = QPushButton()
@@ -922,10 +929,10 @@ class NetworkInfoCard(QFrame):
         """)
         self.apply_custom_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.apply_custom_btn.clicked.connect(self._on_apply_custom)
-        right.addWidget(self.apply_custom_btn)
+        right_container.addWidget(self.apply_custom_btn)
 
-        right.addStretch()
-        root.addLayout(right, 0)
+        right_container.addStretch()
+        root.addLayout(right_container, 35)
 
     def _style_input(self, widget):
         widget.setStyleSheet(f"""
@@ -967,6 +974,7 @@ class NetworkInfoCard(QFrame):
     def refresh_theme(self, ss: StyleSheet):
         self.ss = ss
         self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 12px; }}")
+        self._divider.setStyleSheet(f"background-color: {ss.border};")
         for lbl in self.findChildren(QLabel):
             txt = lbl.text()
             if txt == "Network Information":
