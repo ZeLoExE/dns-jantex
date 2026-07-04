@@ -252,6 +252,7 @@ class MainWindow(QMainWindow):
         self.dns_card.provider_changed.connect(self._on_provider_changed)
         self.dns_card.manage_clicked.connect(self._open_custom_dns_manager)
         self.dns_card.ping_clicked.connect(self._on_ping_clicked)
+        self.dns_card.smart_clicked.connect(self._on_smart_connect)
         main_layout.addWidget(self.dns_card, 1)
 
         # Action buttons
@@ -550,6 +551,51 @@ class MainWindow(QMainWindow):
         """Handle ping completion."""
         self.dns_card.ping_btn.setEnabled(True)
         self.dns_card.ping_btn.setText(self.t("test_latency"))
+
+    def _on_smart_connect(self):
+        """Benchmark all providers and auto-select the fastest one."""
+        if self.ping_worker and self.ping_worker.isRunning():
+            return
+
+        self.dns_card.smart_btn.setEnabled(False)
+        self.dns_card.ping_btn.setEnabled(False)
+        self.status_label.setText("Benchmarking DNS providers...")
+
+        self._smart_benchmark_results = {}
+        self.ping_worker = PingWorker(DNS_PROVIDERS)
+        self.ping_worker.result_ready.connect(self._on_smart_ping_result)
+        self.ping_worker.finished_all.connect(self._on_smart_benchmark_done)
+        self.ping_worker.start()
+
+    def _on_smart_ping_result(self, index: int, latency):
+        if latency is not None:
+            self._smart_benchmark_results[index] = latency
+            self.dns_card.update_latency(index, latency)
+
+    def _on_smart_benchmark_done(self):
+        """Select the fastest provider after benchmark completes."""
+        self.ping_worker = None
+        self.dns_card.smart_btn.setEnabled(True)
+        self.dns_card.ping_btn.setEnabled(True)
+        self.dns_card.ping_btn.setText(self.t("test_latency"))
+
+        if self._smart_benchmark_results:
+            fastest_idx = min(self._smart_benchmark_results, key=self._smart_benchmark_results.get)
+            fastest_ms = self._smart_benchmark_results[fastest_idx]
+            fastest_name = DNS_PROVIDERS[fastest_idx].name
+
+            # Find visible row index for this provider
+            for i, row in enumerate(self.dns_card.rows):
+                if row.name == fastest_name:
+                    self.dns_card.select_provider(i)
+                    break
+
+            self.status_label.setText(f"Smart Connect: {fastest_name} ({fastest_ms:.0f} ms)")
+        else:
+            self.status_label.setText("Smart Connect: no DNS responded")
+
+        self._save_settings()
+        QTimer.singleShot(3000, lambda: self.status_label.setText(""))
 
     def _apply_dns_by_index(self, index: int):
         """Apply DNS by provider index."""

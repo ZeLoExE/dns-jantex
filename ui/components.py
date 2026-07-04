@@ -336,6 +336,7 @@ class DNSCard(QFrame):
     provider_changed = Signal(int)
     manage_clicked = Signal()
     ping_clicked = Signal()
+    smart_clicked = Signal()
 
     def __init__(self, style_sheet: StyleSheet, parent=None):
         super().__init__(parent)
@@ -461,6 +462,30 @@ class DNSCard(QFrame):
         self.ping_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.ping_btn.clicked.connect(self.ping_clicked.emit)
         title_row.addWidget(self.ping_btn)
+
+        # Smart Connect button
+        self.smart_btn = QPushButton()
+        self.smart_btn.setIcon(_load_icon("smart"))
+        self.smart_btn.setIconSize(QSize(14, 14))
+        self.smart_btn.setText(" Smart Connect")
+        self.smart_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {self.ss.accent};
+                border: 1px solid {self.ss.accent};
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {self.ss.accent};
+                color: white;
+            }}
+        """)
+        self.smart_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.smart_btn.clicked.connect(self.smart_clicked.emit)
+        title_row.addWidget(self.smart_btn)
 
         v.addLayout(title_row)
 
@@ -853,6 +878,24 @@ class DNSCard(QFrame):
                 background-color: {ss.hover};
                 color: {ss.text};
                 border-color: {ss.accent};
+            }}
+        """)
+
+        # Update smart connect button
+        self.smart_btn.setIcon(_load_icon("smart", ss.accent))
+        self.smart_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {ss.accent};
+                border: 1px solid {ss.accent};
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {ss.accent};
+                color: white;
             }}
         """)
 
