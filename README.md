@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/Icon.PNG" width="100">
+</p>
+
 # DNS Jantex
 
 A modern Windows DNS management application built with PySide6.
