@@ -24,6 +24,7 @@ class ProviderRow(QFrame):
         self.ss = style_sheet
         self.index = index
         self.category = category
+        self._search_visible = True
         self.latency_label = None
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
@@ -430,6 +431,29 @@ class DNSCard(QFrame):
 
         v.addLayout(title_row)
 
+        # Search box
+        self._search_row = QHBoxLayout()
+        self._search_row.setContentsMargins(0, 0, 0, 0)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("\U0001F50D Search DNS providers...")
+        self.search_input.setFixedHeight(32)
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {self.ss.card};
+                color: {self.ss.text};
+                border: 1px solid {self.ss.border};
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-size: 12px;
+            }}
+            QLineEdit:focus {{
+                border-color: {self.ss.accent};
+            }}
+        """)
+        self.search_input.textChanged.connect(self._on_search)
+        self._search_row.addWidget(self.search_input)
+        v.addLayout(self._search_row)
+
         # Header
         self._header_row = QHBoxLayout()
         hdr = self._header_row
@@ -527,6 +551,20 @@ class DNSCard(QFrame):
         self._title_row.setDirection(dir_val)
         self._header_row.setDirection(dir_val)
 
+    def _on_search(self, text: str):
+        """Filter visible rows by search text."""
+        query = text.lower().strip()
+        for row in self.rows:
+            if not query:
+                row._search_visible = True
+            else:
+                row._search_visible = (
+                    query in row.name.lower() or
+                    query in row.primary.lower() or
+                    query in row.secondary.lower()
+                )
+        self._rebuild_list()
+
     def _toggle_sort(self):
         """Toggle sort order for pings: None -> ascending -> descending -> None."""
         if self.sort_order is None:
@@ -615,10 +653,13 @@ class DNSCard(QFrame):
                 widget.setParent(None)
                 widget.hide()
 
-        # Re-add rows in new order, filtered by category
+        # Re-add rows in new order, filtered by category and search
         visible_idx = 0
         for i, row in enumerate(self.rows):
             if self.filter_iran and row.category != "iran":
+                row.hide()
+                continue
+            if hasattr(row, '_search_visible') and not row._search_visible:
                 row.hide()
                 continue
             self.list_layout.addWidget(row)
@@ -713,6 +754,21 @@ class DNSCard(QFrame):
             QPushButton:hover {{
                 background-color: {ss.hover};
                 color: {ss.text};
+                border-color: {ss.accent};
+            }}
+        """)
+
+        # Update search input
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {ss.card};
+                color: {ss.text};
+                border: 1px solid {ss.border};
+                border-radius: 6px;
+                padding: 4px 12px;
+                font-size: 12px;
+            }}
+            QLineEdit:focus {{
                 border-color: {ss.accent};
             }}
         """)
