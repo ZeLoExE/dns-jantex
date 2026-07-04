@@ -2,22 +2,27 @@
   <img src="docs/Icon.PNG" width="100">
 </p>
 
-# DNS Jantex
+<h1 align="center">DNS Jantex</h1>
 
-A modern Windows DNS management application built with PySide6.
+<p align="center">
+  A modern Windows DNS management app with 50+ providers, latency testing, search/filter, and Persian support.
+</p>
+
+---
 
 ## Features
 
-- Switch between 50+ DNS providers worldwide with one click
-- Built-in latency test to find the fastest DNS for your connection
-- Sort providers by name or ping speed
-- Iran DNS filter for quick access to local providers
-- Custom DNS support — add your own DNS servers
-- Dark and light themes
-- English and Persian (Farsi) language support
-- Flush DNS cache and reset to DHCP
-- System tray support
-- Desktop and Start Menu shortcuts via installer
+- **50+ DNS providers** — Google, Cloudflare, Quad9, AdGuard, and many more
+- **Iran DNS filter** — quick access to local providers (Shecan, Hamrahe Aval, Electro, etc.)
+- **Latency test** — ping all providers to find the fastest one for your connection
+- **Search & filter** — find any DNS provider instantly by name or IP
+- **Sort by speed** — toggle between lowest/highest latency
+- **Custom DNS** — add your own DNS servers
+- **Dark & light themes** — switch with one click
+- **English & Persian** — full Farsi language support with RTL layout
+- **One-click apply** — fast DNS switching with instant confirmation
+- **Flush & reset** — clear DNS cache or restore automatic (DHCP) settings
+- **Installer** — desktop and Start Menu shortcuts included
 
 ## Screenshots
 
@@ -38,14 +43,14 @@ Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jan
 
 ## Installation
 
-1. Download `DNSJantex-Setup.exe` from Releases
+1. Download `DNSJantex-Setup.exe` from [Releases](https://github.com/ZeLoExE/dns-jantex/releases)
 2. Run the installer as Administrator
 3. Follow the setup wizard
 
 ## Usage
 
 1. Run `DNSChanger.exe` as Administrator
-2. Select a DNS provider from the list
+2. Search or browse for a DNS provider
 3. Click **Apply** to set the DNS
 4. Use **Test Latency** to compare speeds
 5. Use **Default DNS** to reset to automatic
@@ -78,14 +83,13 @@ dns-jantex/
 │   └── custom_dns_dialog.py
 ├── core/                   # Core logic
 │   ├── dns_manager.py      # DNS operations
-│   ├── dns_providers.py    # Provider list
+│   ├── dns_providers.py    # Provider list (50+)
 │   ├── network_adapter.py  # Network detection
 │   └── custom_dns.py       # Custom DNS storage
 ├── translations/           # Language files
 │   ├── en.json
 │   └── fa.json
 ├── assets/                 # Icons and images
-├── config/                 # User settings
 ├── build.spec              # PyInstaller config
 └── installer.nsi           # NSIS installer script
 ```
