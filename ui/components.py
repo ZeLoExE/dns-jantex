@@ -821,9 +821,7 @@ class DNSCard(QFrame):
 
 
 class NetworkInfoCard(QFrame):
-    """Network information card with optional custom DNS inputs."""
-
-    custom_dns_apply = Signal(str, str)  # primary, secondary
+    """Network information card."""
 
     def __init__(self, style_sheet: StyleSheet, parent=None):
         super().__init__(parent)
@@ -834,17 +832,13 @@ class NetworkInfoCard(QFrame):
         self.setStyleSheet(f"QFrame {{ background-color: {self.ss.card}; border: 1px solid {self.ss.border}; border-radius: 12px; }}")
         self.setMinimumHeight(90)
 
-        root = QHBoxLayout(self)
-        root.setContentsMargins(16, 12, 16, 12)
-        root.setSpacing(0)
-
-        # Left side: network info (~65%)
-        left = QVBoxLayout()
-        left.setSpacing(10)
+        v = QVBoxLayout(self)
+        v.setContentsMargins(16, 12, 16, 12)
+        v.setSpacing(10)
 
         title = QLabel("Network Information")
         title.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
-        left.addWidget(title)
+        v.addWidget(title)
 
         self._grid = QHBoxLayout()
         self._grid.setSpacing(40)
@@ -862,23 +856,64 @@ class NetworkInfoCard(QFrame):
             grid.addLayout(col)
 
         grid.addStretch()
-        left.addLayout(grid)
-        root.addLayout(left, 65)
+        v.addLayout(grid)
 
-        # Vertical divider
-        self._divider = QFrame()
-        self._divider.setFixedWidth(1)
-        self._divider.setStyleSheet(f"background-color: {self.ss.border};")
-        root.addWidget(self._divider)
+    def update_info(self, adapter_name, ip_address, dns_servers):
+        self.adapter_name.setText(adapter_name or "--")
+        self.ip_address.setText(ip_address or "--")
+        if dns_servers:
+            self.current_dns.setText("  |  ".join(dns_servers))
+            self.current_dns.setStyleSheet(f"color: {self.ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+        else:
+            self.current_dns.setText("Automatic (DHCP)")
+            self.current_dns.setStyleSheet(f"""
+                color: {self.ss.accent};
+                font-size: 13px;
+                font-weight: bold;
+                background: transparent;
+                border: none;
+            """)
 
-        # Right side: custom DNS (~35%)
-        right_container = QVBoxLayout()
-        right_container.setContentsMargins(24, 0, 0, 0)
-        right_container.setSpacing(6)
+    def refresh_theme(self, ss: StyleSheet):
+        self.ss = ss
+        self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 12px; }}")
+        for lbl in self.findChildren(QLabel):
+            txt = lbl.text()
+            if txt == "Network Information":
+                lbl.setStyleSheet(f"color: {ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
+            elif txt in ["Active Adapter", "IPv4 Address", "Current DNS"]:
+                lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
+            else:
+                lbl.setStyleSheet(f"color: {ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
 
-        right_title = QLabel("Custom DNS")
-        right_title.setStyleSheet(f"color: {self.ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
-        right_container.addWidget(right_title)
+    def set_direction(self, is_rtl: bool):
+        self._grid.setDirection(
+            QBoxLayout.RightToLeft if is_rtl
+            else QBoxLayout.LeftToRight
+        )
+
+
+class CustomDNSCard(QFrame):
+    """Standalone card for custom DNS input."""
+
+    custom_dns_apply = Signal(str, str)  # primary, secondary
+
+    def __init__(self, style_sheet: StyleSheet, parent=None):
+        super().__init__(parent)
+        self.ss = style_sheet
+        self._setup_ui()
+
+    def _setup_ui(self):
+        self.setStyleSheet(f"QFrame {{ background-color: {self.ss.card}; border: 1px solid {self.ss.border}; border-radius: 12px; }}")
+        self.setMinimumHeight(90)
+
+        v = QVBoxLayout(self)
+        v.setContentsMargins(16, 12, 16, 12)
+        v.setSpacing(10)
+
+        title = QLabel("Custom DNS")
+        title.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
+        v.addWidget(title)
 
         inputs_row = QHBoxLayout()
         inputs_row.setSpacing(10)
@@ -886,7 +921,7 @@ class NetworkInfoCard(QFrame):
         # Primary DNS input
         pri_col = QVBoxLayout()
         pri_lbl = QLabel("Primary DNS")
-        pri_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        pri_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
         self.primary_input = QLineEdit()
         self.primary_input.setPlaceholderText("e.g., 178.22.122.100")
         self.primary_input.setFixedHeight(28)
@@ -898,7 +933,7 @@ class NetworkInfoCard(QFrame):
         # Secondary DNS input
         sec_col = QVBoxLayout()
         sec_lbl = QLabel("Secondary DNS")
-        sec_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        sec_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
         self.secondary_input = QLineEdit()
         self.secondary_input.setPlaceholderText("e.g., 185.51.200.2")
         self.secondary_input.setFixedHeight(28)
@@ -907,7 +942,7 @@ class NetworkInfoCard(QFrame):
         sec_col.addWidget(self.secondary_input)
         inputs_row.addLayout(sec_col)
 
-        right_container.addLayout(inputs_row)
+        v.addLayout(inputs_row)
 
         # Apply button
         self.apply_custom_btn = QPushButton()
@@ -929,10 +964,9 @@ class NetworkInfoCard(QFrame):
         """)
         self.apply_custom_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.apply_custom_btn.clicked.connect(self._on_apply_custom)
-        right_container.addWidget(self.apply_custom_btn)
+        v.addWidget(self.apply_custom_btn)
 
-        right_container.addStretch()
-        root.addLayout(right_container, 35)
+        v.addStretch()
 
     def _style_input(self, widget):
         widget.setStyleSheet(f"""
@@ -955,38 +989,15 @@ class NetworkInfoCard(QFrame):
         if p:
             self.custom_dns_apply.emit(p, s)
 
-    def update_info(self, adapter_name, ip_address, dns_servers):
-        self.adapter_name.setText(adapter_name or "--")
-        self.ip_address.setText(ip_address or "--")
-        if dns_servers:
-            self.current_dns.setText("  |  ".join(dns_servers))
-            self.current_dns.setStyleSheet(f"color: {self.ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
-        else:
-            self.current_dns.setText("Automatic (DHCP)")
-            self.current_dns.setStyleSheet(f"""
-                color: {self.ss.accent};
-                font-size: 13px;
-                font-weight: bold;
-                background: transparent;
-                border: none;
-            """)
-
     def refresh_theme(self, ss: StyleSheet):
         self.ss = ss
         self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 12px; }}")
-        self._divider.setStyleSheet(f"background-color: {ss.border};")
         for lbl in self.findChildren(QLabel):
             txt = lbl.text()
-            if txt == "Network Information":
+            if txt == "Custom DNS":
                 lbl.setStyleSheet(f"color: {ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
-            elif txt in ["Active Adapter", "IPv4 Address", "Current DNS"]:
-                lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
-            elif txt == "Custom DNS":
-                lbl.setStyleSheet(f"color: {ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
             elif txt in ["Primary DNS", "Secondary DNS"]:
-                lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
-            else:
-                lbl.setStyleSheet(f"color: {ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+                lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
         self._style_input(self.primary_input)
         self._style_input(self.secondary_input)
         self.apply_custom_btn.setIcon(_load_icon("apply", ss.accent))
@@ -1002,12 +1013,6 @@ class NetworkInfoCard(QFrame):
             }}
             QPushButton:hover {{ background-color: {ss.accent_hover}; }}
         """)
-
-    def set_direction(self, is_rtl: bool):
-        self._grid.setDirection(
-            QBoxLayout.RightToLeft if is_rtl
-            else QBoxLayout.LeftToRight
-        )
 
 
 class ActionButton(QPushButton):

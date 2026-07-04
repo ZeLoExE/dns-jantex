@@ -10,7 +10,7 @@ from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize
 from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPainter
 
 from ui.styles import StyleSheet, Fonts
-from ui.components import DNSCard, NetworkInfoCard, ActionButton
+from ui.components import DNSCard, NetworkInfoCard, CustomDNSCard, ActionButton
 from ui.custom_dns_dialog import CustomDNSManagerDialog
 from core.dns_manager import DNSManager
 from core.network_adapter import NetworkAdapterDetector
@@ -228,10 +228,18 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(header_layout)
 
-        # Network info card
+        # Network info + Custom DNS cards side by side
+        top_cards_layout = QHBoxLayout()
+        top_cards_layout.setSpacing(12)
+
         self.network_card = NetworkInfoCard(self.style_sheet)
-        self.network_card.custom_dns_apply.connect(self._on_apply_custom_dns)
-        main_layout.addWidget(self.network_card)
+        top_cards_layout.addWidget(self.network_card, 65)
+
+        self.custom_dns_card = CustomDNSCard(self.style_sheet)
+        self.custom_dns_card.custom_dns_apply.connect(self._on_apply_custom_dns)
+        top_cards_layout.addWidget(self.custom_dns_card, 35)
+
+        main_layout.addLayout(top_cards_layout)
 
         # DNS settings card
         self.dns_card = DNSCard(self.style_sheet)
@@ -276,6 +284,9 @@ class MainWindow(QMainWindow):
 
         if self.network_card:
             self.network_card.refresh_theme(self.style_sheet)
+
+        if hasattr(self, 'custom_dns_card') and self.custom_dns_card:
+            self.custom_dns_card.refresh_theme(self.style_sheet)
 
         if self.dns_card:
             self.dns_card.refresh_theme(self.style_sheet)
