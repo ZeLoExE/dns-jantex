@@ -107,6 +107,11 @@ class MainWindow(QMainWindow):
         self.ping_worker = None
         self.dns_worker = None
 
+        # Analytics state
+        self._dns_applied_at = None
+        self._dns_success_count = 0
+        self._dns_fail_count = 0
+
         # Set up UI
         self._setup_ui()
         self._apply_theme()
@@ -396,28 +401,47 @@ class MainWindow(QMainWindow):
                 [provider_name] if provider_name else adapter.dns_servers
             )
             self._check_dns_status(adapter.dns_servers)
+            # Initialize analytics if not already tracking
+            if self._dns_applied_at is None:
+                import time
+                self._dns_applied_at = time.time()
+                self._dns_success_count = 0
+                self._dns_fail_count = 0
         else:
             self.network_card.update_info(None, None, None)
 
     def _check_dns_status(self, dns_servers):
-        """Ping the first DNS server and set the status dot color."""
+        """Ping the first DNS server, set status dot, and update analytics."""
         if not dns_servers:
             return
         dns = dns_servers[0].strip()
         ms = DNSManager.ping_dns_fast(dns, timeout_ms=2000)
         if ms is None:
             color = "#f44336"  # red — unreachable
+            self._dns_fail_count += 1
         elif ms < 100:
             color = "#4caf50"  # green — fast
+            self._dns_success_count += 1
         else:
             color = "#ff9800"  # yellow — slow
+            self._dns_success_count += 1
         self.network_card.set_dns_status(color)
+        self._update_analytics()
+
+    def _update_analytics(self):
+        """Update the analytics display with current stats."""
+        if self._dns_applied_at is None:
+            return
+        import time
+        uptime = int(time.time() - self._dns_applied_at)
+        self.network_card.update_analytics(uptime, self._dns_success_count, self._dns_fail_count)
 
     def _periodic_dns_check(self):
-        """Periodically ping the current DNS to update status indicator."""
+        """Periodically ping the current DNS to update status and analytics."""
         adapter = DNSManager.get_current_dns_info()
         if adapter and adapter.dns_servers:
             self._check_dns_status(adapter.dns_servers)
+        self._update_analytics()
 
     def _match_dns_to_provider(self, dns_servers):
         """Return provider name if DNS matches a known provider, else 'Custom DNS'."""

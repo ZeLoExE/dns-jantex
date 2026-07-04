@@ -988,6 +988,25 @@ class NetworkInfoCard(QFrame):
         grid.addStretch()
         v.addLayout(grid)
 
+        # Analytics row
+        analytics_row = QHBoxLayout()
+        analytics_row.setSpacing(16)
+
+        self._uptime_label = QLabel("Uptime: --")
+        self._uptime_label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        analytics_row.addWidget(self._uptime_label)
+
+        self._success_label = QLabel("Success: --")
+        self._success_label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        analytics_row.addWidget(self._success_label)
+
+        self._blocked_label = QLabel("Blocked queries: --")
+        self._blocked_label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        analytics_row.addWidget(self._blocked_label)
+
+        analytics_row.addStretch()
+        v.addLayout(analytics_row)
+
     def update_info(self, adapter_name, ip_address, dns_servers):
         self.adapter_name.setText(adapter_name or "--")
         self.ip_address.setText(ip_address or "--")
@@ -1009,6 +1028,31 @@ class NetworkInfoCard(QFrame):
         """Update the status dot color: '#4caf50' green, '#ff9800' yellow, '#f44336' red."""
         self._status_dot.setStyleSheet(f"background-color: {color}; border-radius: 5px;")
 
+    def update_analytics(self, uptime_seconds: int, success_count: int, fail_count: int):
+        """Update the analytics labels with current stats."""
+        # Format uptime
+        if uptime_seconds < 60:
+            uptime_str = f"{uptime_seconds}s"
+        elif uptime_seconds < 3600:
+            uptime_str = f"{uptime_seconds // 60}m {uptime_seconds % 60}s"
+        else:
+            h = uptime_seconds // 3600
+            m = (uptime_seconds % 3600) // 60
+            uptime_str = f"{h}h {m}m"
+
+        total = success_count + fail_count
+        if total > 0:
+            rate = (success_count / total) * 100
+            color = "#4caf50" if rate >= 95 else "#ff9800" if rate >= 70 else "#f44336"
+            self._success_label.setText(f"Success: {rate:.0f}%")
+            self._success_label.setStyleSheet(f"color: {color}; font-size: 10px; font-weight: bold; background: transparent; border: none;")
+        else:
+            self._success_label.setText("Success: --")
+            self._success_label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+
+        self._uptime_label.setText(f"Uptime: {uptime_str}")
+        self._blocked_label.setText(f"Queries checked: {total}")
+
     def refresh_theme(self, ss: StyleSheet):
         self.ss = ss
         self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 12px; }}")
@@ -1018,6 +1062,8 @@ class NetworkInfoCard(QFrame):
                 lbl.setStyleSheet(f"color: {ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
             elif txt in ["Active Adapter", "IPv4 Address", "Current DNS"]:
                 lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
+            elif txt.startswith("Uptime:") or txt.startswith("Queries"):
+                lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
             else:
                 lbl.setStyleSheet(f"color: {ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
 
