@@ -120,6 +120,25 @@ class MainWindow(QMainWindow):
             if last_provider >= 0:
                 QTimer.singleShot(500, lambda: self._apply_dns_by_index(last_provider))
 
+    def _load_icon(self, name: str, color: str = None) -> QIcon:
+        """Load an SVG icon, replacing currentColor with the given color."""
+        from PySide6.QtSvg import QSvgRenderer
+        from PySide6.QtGui import QImage, QPainter, QPixmap
+        from PySide6.QtCore import QByteArray
+        path = Path(__file__).parent.parent / "assets" / "icons" / f"{name}.svg"
+        data = path.read_bytes().decode("utf-8")
+        if color:
+            data = data.replace("currentColor", color)
+        renderer = QSvgRenderer(QByteArray(data.encode("utf-8")))
+        if not renderer.isValid():
+            return QIcon()
+        img = QImage(48, 48, QImage.Format.Format_ARGB32)
+        img.fill(0)
+        painter = QPainter(img)
+        renderer.render(painter)
+        painter.end()
+        return QIcon(QPixmap.fromImage(img))
+
     def _load_translations(self) -> dict:
         """Load translations from JSON files."""
         translations = {}
@@ -211,12 +230,12 @@ class MainWindow(QMainWindow):
 
         # Network info card
         self.network_card = NetworkInfoCard(self.style_sheet)
+        self.network_card.custom_dns_apply.connect(self._on_apply_custom_dns)
         main_layout.addWidget(self.network_card)
 
         # DNS settings card
         self.dns_card = DNSCard(self.style_sheet)
         self._load_all_providers()
-        self.dns_card.add_custom_option()
         self.dns_card.provider_changed.connect(self._on_provider_changed)
         self.dns_card.manage_clicked.connect(self._open_custom_dns_manager)
         self.dns_card.ping_clicked.connect(self._on_ping_clicked)
@@ -260,6 +279,7 @@ class MainWindow(QMainWindow):
 
         if self.dns_card:
             self.dns_card.refresh_theme(self.style_sheet)
+            self._refresh_dns_card_icons()
 
         self.apply_btn.refresh_theme(self.style_sheet)
         self.reset_btn.refresh_theme(self.style_sheet)
@@ -274,22 +294,44 @@ class MainWindow(QMainWindow):
 
         self.status_label.setStyleSheet(self.style_sheet.get_label_style(secondary=True))
 
+    def _refresh_dns_card_icons(self):
+        """Re-render DNS card button icons with current theme color."""
+        color = self.style_sheet.text
+        self.dns_card.sort_btn.setIcon(self._load_icon("sort", color))
+        self.dns_card.sort_btn.setIconSize(QSize(14, 14))
+        self.dns_card.ping_btn.setIcon(self._load_icon("latency", color))
+        self.dns_card.ping_btn.setIconSize(QSize(14, 14))
+        self.dns_card.manage_btn.setIcon(self._load_icon("manage", color))
+        self.dns_card.manage_btn.setIconSize(QSize(14, 14))
+        for row in self.dns_card.rows:
+            row.copy_btn.setIcon(self._load_icon("copy", color))
+            row.copy_btn.setIconSize(QSize(16, 16))
+        if self.dns_card.custom_row:
+            self.dns_card.custom_row.refresh_theme(self.style_sheet)
+
     def _update_theme_button(self):
         """Update the theme toggle button icon."""
+        color = self.style_sheet.text
         if self.dark_mode:
-            self.theme_btn.setText("\u2600")  # Sun icon
+            self.theme_btn.setIcon(self._load_icon("sun", color))
+            self.theme_btn.setIconSize(QSize(20, 20))
+            self.theme_btn.setText("")
             self.theme_btn.setToolTip("Switch to Light Mode")
         else:
-            self.theme_btn.setText("\u263E")  # Moon icon
+            self.theme_btn.setIcon(self._load_icon("moon", color))
+            self.theme_btn.setIconSize(QSize(20, 20))
+            self.theme_btn.setText("")
             self.theme_btn.setToolTip("Switch to Dark Mode")
 
     def _update_lang_button(self):
         """Update the language button icon."""
+        color = self.style_sheet.text
+        self.lang_btn.setIcon(self._load_icon("language", color))
+        self.lang_btn.setIconSize(QSize(20, 20))
+        self.lang_btn.setText("")
         if self.current_lang == "en":
-            self.lang_btn.setText("\U0001F310")  # Globe icon
             self.lang_btn.setToolTip("Switch to Persian")
         else:
-            self.lang_btn.setText("\U0001F310")
             self.lang_btn.setToolTip("Switch to English")
 
     def _toggle_theme(self):
@@ -312,20 +354,6 @@ class MainWindow(QMainWindow):
         self._update_ui_text()
         self._update_lang_button()
         self._apply_theme()
-
-        # Reverse all horizontal layouts for RTL
-        direction = Qt.LayoutDirection.RightToLeft if is_rtl else Qt.LayoutDirection.LeftToRight
-        self.setLayoutDirection(direction)
-        self.network_card.set_direction(is_rtl)
-        self.dns_card.set_direction(is_rtl)
-
-        # Also reverse the header and action button rows
-        for layout in self.findChildren(QHBoxLayout):
-            layout.setDirection(
-                QBoxLayout.Direction.RightToLeft if is_rtl
-                else QBoxLayout.Direction.LeftToRight
-            )
-
         self._save_settings()
 
     def _update_ui_text(self):
@@ -335,22 +363,34 @@ class MainWindow(QMainWindow):
         self.reset_btn.setText(self.t("reset_dhcp"))
         self.flush_btn.setText(self.t("flush_dns"))
         if hasattr(self, 'dns_card') and self.dns_card:
-            self.dns_card.ping_btn.setText(self.t("test_latency"))
-            self.dns_card.manage_btn.setText("\u2795 " + self.t("manage_dns"))
-            self.dns_card.sort_btn.setText(self.t("sort"))
+            self.dns_card.ping_btn.setText(" " + self.t("test_latency"))
+            self.dns_card.manage_btn.setText(" " + self.t("manage_dns"))
+            self.dns_card.sort_btn.setText(" " + self.t("sort"))
             self.dns_card.title_label.setText(self.t("dns_settings"))
 
     def _refresh_dns_info(self):
         """Refresh and display current DNS configuration."""
         adapter = DNSManager.get_current_dns_info()
         if adapter:
+            provider_name = self._match_dns_to_provider(adapter.dns_servers)
             self.network_card.update_info(
                 adapter.name,
                 adapter.ip_address,
-                adapter.dns_servers
+                [provider_name] if provider_name else adapter.dns_servers
             )
         else:
             self.network_card.update_info(None, None, None)
+
+    def _match_dns_to_provider(self, dns_servers):
+        """Return provider name if DNS matches a known provider, else 'Custom DNS'."""
+        if not dns_servers:
+            return None
+        dns_set = set(s.strip() for s in dns_servers)
+        for provider in DNS_PROVIDERS:
+            provider_set = {provider.primary, provider.secondary}
+            if dns_set == provider_set or dns_set.issubset(provider_set):
+                return provider.name
+        return "Custom DNS"
 
     def _load_all_providers(self):
         """Load built-in + custom DNS providers into the card."""
@@ -379,9 +419,15 @@ class MainWindow(QMainWindow):
     def _on_custom_dns_changed(self):
         """Handle changes in custom DNS list."""
         self._load_all_providers()
-        # Re-add custom input row
-        self.dns_card.add_custom_option()
         self.dns_card.refresh_theme(self.style_sheet)
+
+    def _on_apply_custom_dns(self, primary: str, secondary: str):
+        """Handle Apply Custom DNS button click."""
+        self._set_buttons_enabled(False)
+        self.status_label.setText("Applying DNS...")
+        self.dns_worker = DNSWorker("set", primary, secondary or "")
+        self.dns_worker.finished.connect(self._on_dns_operation_finished)
+        self.dns_worker.start()
 
     def _get_selected_provider_index(self) -> int:
         """Get the index of the currently selected provider."""
@@ -451,7 +497,7 @@ class MainWindow(QMainWindow):
             return
 
         self.dns_card.ping_btn.setEnabled(False)
-        self.dns_card.ping_btn.setText("\u23F3 Testing...")
+        self.dns_card.ping_btn.setText(" Testing...")
 
         self.ping_worker = PingWorker(DNS_PROVIDERS)
         self.ping_worker.result_ready.connect(self._on_ping_result)

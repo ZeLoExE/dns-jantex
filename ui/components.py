@@ -3,11 +3,32 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QRadioButton, QButtonGroup,
     QScrollArea, QWidget
 )
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QFont, QColor, QIcon
 from typing import Optional
 
 from ui.styles import StyleSheet
+
+
+def _load_icon(name: str, color: str = None) -> QIcon:
+    """Load an SVG icon, replacing currentColor with the given color."""
+    from pathlib import Path
+    from PySide6.QtSvg import QSvgRenderer
+    from PySide6.QtGui import QImage, QPainter, QPixmap
+    from PySide6.QtCore import QByteArray
+    path = Path(__file__).parent.parent / "assets" / "icons" / f"{name}.svg"
+    data = path.read_bytes().decode("utf-8")
+    if color:
+        data = data.replace("currentColor", color)
+    renderer = QSvgRenderer(QByteArray(data.encode("utf-8")))
+    if not renderer.isValid():
+        return QIcon()
+    img = QImage(48, 48, QImage.Format.Format_ARGB32)
+    img.fill(0)
+    painter = QPainter(img)
+    renderer.render(painter)
+    painter.end()
+    return QIcon(QPixmap.fromImage(img))
 
 
 class ProviderRow(QFrame):
@@ -122,7 +143,9 @@ class ProviderRow(QFrame):
         h.addStretch()
 
         # Copy icon button
-        self.copy_btn = QPushButton("\U0001F4CB")  # Clipboard emoji
+        self.copy_btn = QPushButton()
+        self.copy_btn.setIcon(_load_icon("copy"))
+        self.copy_btn.setIconSize(QSize(16, 16))
         self.copy_btn.setFixedSize(30, 26)
         self.copy_btn.setStyleSheet(f"""
             QPushButton {{
@@ -344,7 +367,10 @@ class DNSCard(QFrame):
         title_row.addStretch()
 
         # Manage Custom DNS button
-        self.manage_btn = QPushButton("\u2795 Manage DNS")
+        self.manage_btn = QPushButton()
+        self.manage_btn.setIcon(_load_icon("manage"))
+        self.manage_btn.setIconSize(QSize(14, 14))
+        self.manage_btn.setText(" Manage DNS")
         self.manage_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -365,7 +391,10 @@ class DNSCard(QFrame):
         title_row.addWidget(self.manage_btn)
 
         # Sort button
-        self.sort_btn = QPushButton("\u2195 Sort")
+        self.sort_btn = QPushButton()
+        self.sort_btn.setIcon(_load_icon("sort"))
+        self.sort_btn.setIconSize(QSize(14, 14))
+        self.sort_btn.setText(" Sort")
         self.sort_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -388,7 +417,7 @@ class DNSCard(QFrame):
 
         # Iran filter button
         self.filter_iran = False
-        self.iran_btn = QPushButton("\U0001F1EE\U0001F1F7 Iran")
+        self.iran_btn = QPushButton(" Iran")
         self.iran_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -409,7 +438,10 @@ class DNSCard(QFrame):
         title_row.addWidget(self.iran_btn)
 
         # Test Latency button
-        self.ping_btn = QPushButton("\u23F1 Test Latency")
+        self.ping_btn = QPushButton()
+        self.ping_btn.setIcon(_load_icon("latency"))
+        self.ping_btn.setIconSize(QSize(14, 14))
+        self.ping_btn.setText(" Test Latency")
         self.ping_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -435,7 +467,7 @@ class DNSCard(QFrame):
         self._search_row = QHBoxLayout()
         self._search_row.setContentsMargins(0, 0, 0, 0)
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("\U0001F50D Search DNS providers...")
+        self.search_input.setPlaceholderText("Search DNS providers...")
         self.search_input.setFixedHeight(32)
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
@@ -598,11 +630,11 @@ class DNSCard(QFrame):
 
         # Update button text to reflect current state
         if self.sort_order is None:
-            self.sort_btn.setText("\u2195 Sort")
+            self.sort_btn.setText(" Sort")
         elif self.sort_order is True:
-            self.sort_btn.setText("\u2191 Sort")
+            self.sort_btn.setText(" Sort")
         else:
-            self.sort_btn.setText("\u2193 Sort")
+            self.sort_btn.setText(" Sort")
 
     def _toggle_iran_filter(self):
         """Toggle Iran-only DNS filter."""
@@ -789,7 +821,9 @@ class DNSCard(QFrame):
 
 
 class NetworkInfoCard(QFrame):
-    """Network information card."""
+    """Network information card with optional custom DNS inputs."""
+
+    custom_dns_apply = Signal(str, str)  # primary, secondary
 
     def __init__(self, style_sheet: StyleSheet, parent=None):
         super().__init__(parent)
@@ -800,13 +834,17 @@ class NetworkInfoCard(QFrame):
         self.setStyleSheet(f"QFrame {{ background-color: {self.ss.card}; border: 1px solid {self.ss.border}; border-radius: 12px; }}")
         self.setMinimumHeight(90)
 
-        v = QVBoxLayout(self)
-        v.setContentsMargins(16, 12, 16, 12)
-        v.setSpacing(10)
+        root = QHBoxLayout(self)
+        root.setContentsMargins(16, 12, 16, 12)
+        root.setSpacing(24)
+
+        # Left side: network info
+        left = QVBoxLayout()
+        left.setSpacing(10)
 
         title = QLabel("Network Information")
         title.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
-        v.addWidget(title)
+        left.addWidget(title)
 
         self._grid = QHBoxLayout()
         self._grid.setSpacing(40)
@@ -824,7 +862,91 @@ class NetworkInfoCard(QFrame):
             grid.addLayout(col)
 
         grid.addStretch()
-        v.addLayout(grid)
+        left.addLayout(grid)
+        root.addLayout(left, 1)
+
+        # Right side: custom DNS inputs
+        right = QVBoxLayout()
+        right.setSpacing(6)
+
+        right_title = QLabel("Custom DNS")
+        right_title.setStyleSheet(f"color: {self.ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+        right.addWidget(right_title)
+
+        inputs_row = QHBoxLayout()
+        inputs_row.setSpacing(10)
+
+        # Primary DNS input
+        pri_col = QVBoxLayout()
+        pri_lbl = QLabel("Primary DNS")
+        pri_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        self.primary_input = QLineEdit()
+        self.primary_input.setPlaceholderText("e.g., 178.22.122.100")
+        self.primary_input.setFixedHeight(28)
+        self._style_input(self.primary_input)
+        pri_col.addWidget(pri_lbl)
+        pri_col.addWidget(self.primary_input)
+        inputs_row.addLayout(pri_col)
+
+        # Secondary DNS input
+        sec_col = QVBoxLayout()
+        sec_lbl = QLabel("Secondary DNS")
+        sec_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        self.secondary_input = QLineEdit()
+        self.secondary_input.setPlaceholderText("e.g., 185.51.200.2")
+        self.secondary_input.setFixedHeight(28)
+        self._style_input(self.secondary_input)
+        sec_col.addWidget(sec_lbl)
+        sec_col.addWidget(self.secondary_input)
+        inputs_row.addLayout(sec_col)
+
+        right.addLayout(inputs_row)
+
+        # Apply button
+        self.apply_custom_btn = QPushButton()
+        self.apply_custom_btn.setIcon(_load_icon("apply", self.ss.accent))
+        self.apply_custom_btn.setIconSize(QSize(14, 14))
+        self.apply_custom_btn.setText(" Apply")
+        self.apply_custom_btn.setFixedHeight(28)
+        self.apply_custom_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self.ss.accent};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 4px 14px;
+                font-size: 11px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background-color: {self.ss.accent_hover}; }}
+        """)
+        self.apply_custom_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.apply_custom_btn.clicked.connect(self._on_apply_custom)
+        right.addWidget(self.apply_custom_btn)
+
+        right.addStretch()
+        root.addLayout(right, 0)
+
+    def _style_input(self, widget):
+        widget.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {self.ss.card};
+                color: {self.ss.text};
+                border: 1px solid {self.ss.border};
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 11px;
+            }}
+            QLineEdit:focus {{
+                border-color: {self.ss.accent};
+            }}
+        """)
+
+    def _on_apply_custom(self):
+        p = self.primary_input.text().strip()
+        s = self.secondary_input.text().strip()
+        if p:
+            self.custom_dns_apply.emit(p, s)
 
     def update_info(self, adapter_name, ip_address, dns_servers):
         self.adapter_name.setText(adapter_name or "--")
@@ -851,8 +973,27 @@ class NetworkInfoCard(QFrame):
                 lbl.setStyleSheet(f"color: {ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
             elif txt in ["Active Adapter", "IPv4 Address", "Current DNS"]:
                 lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
+            elif txt == "Custom DNS":
+                lbl.setStyleSheet(f"color: {ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+            elif txt in ["Primary DNS", "Secondary DNS"]:
+                lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
             else:
                 lbl.setStyleSheet(f"color: {ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+        self._style_input(self.primary_input)
+        self._style_input(self.secondary_input)
+        self.apply_custom_btn.setIcon(_load_icon("apply", ss.accent))
+        self.apply_custom_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {ss.accent};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 4px 14px;
+                font-size: 11px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background-color: {ss.accent_hover}; }}
+        """)
 
     def set_direction(self, is_rtl: bool):
         self._grid.setDirection(
