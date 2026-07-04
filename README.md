@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/Icon.PNG" width="100">
+  <img src="docs/icon.png" width="100">
 </p>
 
 <h1 align="center">DNS Jantex</h1>
