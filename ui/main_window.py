@@ -243,6 +243,7 @@ class MainWindow(QMainWindow):
         top_cards_layout.setSpacing(12)
 
         self.network_card = NetworkInfoCard(self.style_sheet)
+        self.network_card.speed_test_clicked.connect(self._on_ping_clicked)
         top_cards_layout.addWidget(self.network_card, 65)
 
         self.custom_dns_card = CustomDNSCard(self.style_sheet)
@@ -417,15 +418,17 @@ class MainWindow(QMainWindow):
         dns = dns_servers[0].strip()
         ms = DNSManager.ping_dns_fast(dns, timeout_ms=2000)
         if ms is None:
-            color = "#f44336"  # red — unreachable
+            color = "#f44336"
             self._dns_fail_count += 1
         elif ms < 100:
-            color = "#4caf50"  # green — fast
+            color = "#4caf50"
             self._dns_success_count += 1
         else:
-            color = "#ff9800"  # yellow — slow
+            color = "#ff9800"
             self._dns_success_count += 1
         self.network_card.set_dns_status(color)
+        if ms is not None:
+            self.network_card.add_ping_result(ms)
         self._update_analytics()
 
     def _update_analytics(self):
@@ -435,6 +438,17 @@ class MainWindow(QMainWindow):
         import time
         uptime = int(time.time() - self._dns_applied_at)
         self.network_card.update_analytics(uptime, self._dns_success_count, self._dns_fail_count)
+
+        # Update last change time display
+        if uptime < 60:
+            change_str = "just now"
+        elif uptime < 3600:
+            change_str = f"{uptime // 60}m ago"
+        else:
+            h = uptime // 3600
+            m = (uptime % 3600) // 60
+            change_str = f"{h}h {m}m ago"
+        self.network_card.set_last_change(change_str)
 
     def _periodic_dns_check(self):
         """Periodically ping the current DNS to update status and analytics."""
@@ -543,6 +557,11 @@ class MainWindow(QMainWindow):
     def _on_dns_operation_finished(self, success: bool, message: str):
         """Handle DNS operation completion."""
         if success:
+            import time
+            self._dns_applied_at = time.time()
+            self._dns_success_count = 0
+            self._dns_fail_count = 0
+            self.network_card.set_last_change("just now")
             self._show_success(message)
             self._refresh_dns_info()
             self._play_success_sound()
@@ -570,6 +589,8 @@ class MainWindow(QMainWindow):
         """Handle ping result - called for each provider as it finishes."""
         if self.dns_card:
             self.dns_card.update_latency(index, latency)
+        if latency is not None and hasattr(self, 'network_card'):
+            self.network_card.add_ping_stat_result(latency)
 
     def _on_ping_finished(self):
         """Handle ping completion."""

@@ -3,8 +3,8 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QRadioButton, QButtonGroup,
     QScrollArea, QWidget
 )
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QFont, QColor, QIcon
+from PySide6.QtCore import Qt, Signal, QSize, QTimer
+from PySide6.QtGui import QFont, QColor, QIcon, QPainter, QPen, QBrush
 from typing import Optional
 
 from ui.styles import StyleSheet
@@ -929,108 +929,389 @@ class DNSCard(QFrame):
             self.custom_row.refresh_theme(ss)
 
 
+class MiniBarChart(QWidget):
+    """Small vertical bar chart for recent ping history."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.bars = []
+        self.setMinimumSize(120, 40)
+        self.setMaximumHeight(45)
+
+    def set_data(self, values: list[float]):
+        self.bars = values[-20:]
+        self.update()
+
+    def paintEvent(self, event):
+        if not self.bars:
+            return
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w = self.width()
+        h = self.height()
+        n = len(self.bars)
+        max_val = max(max(self.bars), 1)
+        bar_w = max(2, (w - (n - 1) * 2) / n)
+        for i, v in enumerate(self.bars):
+            bar_h = max(2, (v / max_val) * (h - 4))
+            x = i * (bar_w + 2)
+            y = h - bar_h
+            color = QColor("#f57c00") if v < 100 else QColor("#ff9800") if v < 300 else QColor("#f44336")
+            p.setBrush(QBrush(color))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.drawRoundedRect(int(x), int(y), int(bar_w), int(bar_h), 2, 2)
+        p.end()
+
+
+class MiniLineChart(QWidget):
+    """Small line chart for ping stat history."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.points = []
+        self.setMinimumSize(120, 40)
+        self.setMaximumHeight(45)
+
+    def set_data(self, values: list[float]):
+        self.points = values[-20:]
+        self.update()
+
+    def paintEvent(self, event):
+        if len(self.points) < 2:
+            return
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        w = self.width()
+        h = self.height()
+        max_val = max(max(self.points), 1)
+        step = w / (len(self.points) - 1)
+
+        # Fill area
+        fill = QColor("#f57c00")
+        fill.setAlpha(30)
+        from PySide6.QtGui import QPainterPath
+        path = QPainterPath()
+        path.moveTo(0, h)
+        for i, v in enumerate(self.points):
+            x = i * step
+            y = h - (v / max_val) * (h - 6) - 3
+            path.lineTo(x, y)
+        path.lineTo((len(self.points) - 1) * step, h)
+        p.setBrush(QBrush(fill))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.drawPath(path)
+
+        # Line
+        pen = QPen(QColor("#f57c00"), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
+        p.setPen(pen)
+        for i in range(len(self.points) - 1):
+            x1 = i * step
+            y1 = h - (self.points[i] / max_val) * (h - 6) - 3
+            x2 = (i + 1) * step
+            y2 = h - (self.points[i + 1] / max_val) * (h - 6) - 3
+            p.drawLine(int(x1), int(y1), int(x2), int(y2))
+        p.end()
+
+
+def _sub_card(ss):
+    """Create a small sub-card frame."""
+    f = QFrame()
+    f.setStyleSheet(f"QFrame {{ background-color: {ss.hover}; border: 1px solid {ss.border}; border-radius: 8px; }}")
+    return f
+
+
 class NetworkInfoCard(QFrame):
-    """Network information card."""
+    """Network status card with sub-cards grid."""
+
+    speed_test_clicked = Signal()
 
     def __init__(self, style_sheet: StyleSheet, parent=None):
         super().__init__(parent)
         self.ss = style_sheet
+        self._dns_applied_at = None
+        self._success_count = 0
+        self._fail_count = 0
+        self._ping_history = []
+        self._ping_stat_history = []
         self._setup_ui()
 
     def _setup_ui(self):
         self.setStyleSheet(f"QFrame {{ background-color: {self.ss.card}; border: 1px solid {self.ss.border}; border-radius: 12px; }}")
-        self.setMinimumHeight(90)
 
         v = QVBoxLayout(self)
-        v.setContentsMargins(16, 12, 16, 12)
-        v.setSpacing(10)
+        v.setContentsMargins(12, 10, 12, 10)
+        v.setSpacing(8)
 
+        # Title
         title = QLabel("Network Status")
         title.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
         v.addWidget(title)
 
-        self._grid = QHBoxLayout()
-        self._grid.setSpacing(40)
-        grid = self._grid
+        # Row 1: Internet Status + IPv4 Address
+        row1 = QHBoxLayout()
+        row1.setSpacing(8)
 
-        for label_text, attr in [("Active Adapter", "adapter_name"), ("IPv4 Address", "ip_address")]:
-            col = QVBoxLayout()
-            l = QLabel(label_text)
-            l.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
-            val = QLabel("--")
-            val.setStyleSheet(f"color: {self.ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
-            setattr(self, attr, val)
-            col.addWidget(l)
-            col.addWidget(val)
-            grid.addLayout(col)
+        # Internet Status sub-card
+        inet_card = _sub_card(self.ss)
+        inet_l = QVBoxLayout(inet_card)
+        inet_l.setContentsMargins(10, 8, 10, 8)
+        inet_l.setSpacing(2)
 
-        # Current DNS with status dot
-        dns_col = QVBoxLayout()
-        dns_label = QLabel("Current DNS")
-        dns_label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
-        dns_col.addWidget(dns_label)
+        inet_top = QHBoxLayout()
+        inet_top.setSpacing(6)
 
-        dns_row = QHBoxLayout()
-        dns_row.setSpacing(6)
-        self.current_dns = QLabel("--")
-        self.current_dns.setStyleSheet(f"color: {self.ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
-        dns_row.addWidget(self.current_dns)
+        self._wifi_icon = QPushButton()
+        self._wifi_icon.setIcon(_load_icon("wifi", "#4caf50"))
+        self._wifi_icon.setIconSize(QSize(24, 24))
+        self._wifi_btn_inner = self._wifi_icon
+        self._wifi_icon.setFixedSize(28, 28)
+        self._wifi_icon.setStyleSheet(f"QPushButton {{ background: transparent; border: none; border-radius: 14px; }}")
+        inet_top.addWidget(self._wifi_icon)
 
-        self._status_dot = QLabel()
-        self._status_dot.setFixedSize(10, 10)
-        self._status_dot.setStyleSheet(f"background-color: {self.ss.text_secondary}; border-radius: 5px;")
-        dns_row.addWidget(self._status_dot)
-        dns_row.addStretch()
+        dot_online = QLabel()
+        dot_online.setFixedSize(8, 8)
+        dot_online.setStyleSheet("background-color: #4caf50; border-radius: 4px;")
+        inet_top.addWidget(dot_online)
 
-        dns_col.addLayout(dns_row)
-        grid.addLayout(dns_col)
+        online_lbl = QLabel("Online")
+        online_lbl.setStyleSheet(f"color: #4caf50; font-size: 11px; font-weight: bold; background: transparent; border: none;")
+        inet_top.addWidget(online_lbl)
+        inet_top.addStretch()
+        inet_l.addLayout(inet_top)
 
-        grid.addStretch()
-        v.addLayout(grid)
+        status_lbl = QLabel("Status: Connected")
+        status_lbl.setStyleSheet(f"color: {self.ss.text}; font-size: 12px; font-weight: bold; background: transparent; border: none;")
+        inet_l.addWidget(status_lbl)
 
-        # Analytics row
-        analytics_row = QHBoxLayout()
-        analytics_row.setSpacing(16)
+        self._adapter_name = QLabel("Active Connection: --")
+        self._adapter_name.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        inet_l.addWidget(self._adapter_name)
 
-        self._uptime_label = QLabel("Uptime: --")
-        self._uptime_label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
-        analytics_row.addWidget(self._uptime_label)
+        row1.addWidget(inet_card, 1)
 
-        self._success_label = QLabel("Success: --")
-        self._success_label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
-        analytics_row.addWidget(self._success_label)
+        # IPv4 Address sub-card
+        ip_card = _sub_card(self.ss)
+        ip_l = QVBoxLayout(ip_card)
+        ip_l.setContentsMargins(10, 8, 10, 8)
+        ip_l.setSpacing(4)
 
-        self._blocked_label = QLabel("Blocked queries: --")
-        self._blocked_label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
-        analytics_row.addWidget(self._blocked_label)
+        ip_top = QHBoxLayout()
+        ip_icon = QPushButton()
+        ip_icon.setIcon(_load_icon("network", self.ss.text_secondary))
+        ip_icon.setIconSize(QSize(18, 18))
+        ip_icon.setFixedSize(20, 20)
+        ip_icon.setStyleSheet(f"QPushButton {{ background: transparent; border: none; }}")
+        ip_top.addWidget(ip_icon)
+        ip_lbl = QLabel("IPv4 Address")
+        ip_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
+        ip_top.addWidget(ip_lbl)
+        ip_top.addStretch()
 
-        analytics_row.addStretch()
-        v.addLayout(analytics_row)
+        self._copy_btn = QPushButton()
+        self._copy_btn.setIcon(_load_icon("copy", self.ss.text_secondary))
+        self._copy_btn.setIconSize(QSize(14, 14))
+        self._copy_btn.setFixedSize(24, 24)
+        self._copy_btn.setStyleSheet(f"QPushButton {{ background: transparent; border: none; border-radius: 4px; }} QPushButton:hover {{ background: {self.ss.border}; }}")
+        self._copy_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._copy_btn.clicked.connect(self._copy_ip)
+        ip_top.addWidget(self._copy_btn)
+        ip_l.addLayout(ip_top)
 
-    def update_info(self, adapter_name, ip_address, dns_servers):
-        self.adapter_name.setText(adapter_name or "--")
-        self.ip_address.setText(ip_address or "--")
-        if dns_servers:
-            self.current_dns.setText("  |  ".join(dns_servers))
-            self.current_dns.setStyleSheet(f"color: {self.ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
-        else:
-            self.current_dns.setText("Automatic (DHCP)")
-            self.current_dns.setStyleSheet(f"""
-                color: {self.ss.accent};
+        self._ip_value = QLabel("--")
+        self._ip_value.setStyleSheet(f"color: {self.ss.text}; font-size: 14px; font-weight: bold; background: transparent; border: none;")
+        ip_l.addWidget(self._ip_value)
+
+        row1.addWidget(ip_card, 1)
+
+        # Recent Ping sub-card
+        ping_card = _sub_card(self.ss)
+        ping_l = QVBoxLayout(ping_card)
+        ping_l.setContentsMargins(10, 8, 10, 8)
+        ping_l.setSpacing(2)
+
+        ping_top = QHBoxLayout()
+        ping_lbl = QLabel("Recent Ping")
+        ping_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
+        ping_top.addWidget(ping_lbl)
+        ping_top.addStretch()
+        self._ping_avg = QLabel("Avg: --ms")
+        self._ping_avg.setStyleSheet(f"color: {self.ss.accent}; font-size: 11px; font-weight: bold; background: transparent; border: none;")
+        ping_top.addWidget(self._ping_avg)
+        ping_l.addLayout(ping_top)
+
+        self._bar_chart = MiniBarChart()
+        ping_l.addWidget(self._bar_chart)
+
+        ping_bottom = QHBoxLayout()
+        last_min = QLabel("Last minute")
+        last_min.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 9px; background: transparent; border: none;")
+        ping_bottom.addWidget(last_min)
+        ping_bottom.addStretch()
+        ping_l.addLayout(ping_bottom)
+
+        row1.addWidget(ping_card, 1)
+
+        v.addLayout(row1)
+
+        # Row 2: Uptime + Data Usage + DNS in Use
+        row2 = QHBoxLayout()
+        row2.setSpacing(8)
+
+        # Current Uptime
+        uptime_card = _sub_card(self.ss)
+        uptime_l = QVBoxLayout(uptime_card)
+        uptime_l.setContentsMargins(10, 8, 10, 8)
+        uptime_l.setSpacing(2)
+        uptime_top = QHBoxLayout()
+        uptime_icon = QPushButton()
+        uptime_icon.setIcon(_load_icon("clock", self.ss.text_secondary))
+        uptime_icon.setIconSize(QSize(16, 16))
+        uptime_icon.setFixedSize(18, 18)
+        uptime_icon.setStyleSheet(f"QPushButton {{ background: transparent; border: none; }}")
+        uptime_top.addWidget(uptime_icon)
+        uptime_top.addStretch()
+        uptime_l.addLayout(uptime_top)
+        uptime_title = QLabel("Current Uptime:")
+        uptime_title.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        uptime_l.addWidget(uptime_title)
+        self._uptime_value = QLabel("--")
+        self._uptime_value.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
+        uptime_l.addWidget(self._uptime_value)
+        row2.addWidget(uptime_card, 1)
+
+        # Data Usage
+        usage_card = _sub_card(self.ss)
+        usage_l = QVBoxLayout(usage_card)
+        usage_l.setContentsMargins(10, 8, 10, 8)
+        usage_l.setSpacing(2)
+        usage_top = QHBoxLayout()
+        usage_icon = QPushButton()
+        usage_icon.setIcon(_load_icon("chart", self.ss.text_secondary))
+        usage_icon.setIconSize(QSize(16, 16))
+        usage_icon.setFixedSize(18, 18)
+        usage_icon.setStyleSheet(f"QPushButton {{ background: transparent; border: none; }}")
+        usage_top.addWidget(usage_icon)
+        usage_top.addStretch()
+        usage_l.addLayout(usage_top)
+        usage_title = QLabel("Data Usage:")
+        usage_title.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        usage_l.addWidget(usage_title)
+        self._queries_value = QLabel("--")
+        self._queries_value.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
+        usage_l.addWidget(self._queries_value)
+        row2.addWidget(usage_card, 1)
+
+        # DNS in Use
+        dns_card = _sub_card(self.ss)
+        dns_l = QVBoxLayout(dns_card)
+        dns_l.setContentsMargins(10, 8, 10, 8)
+        dns_l.setSpacing(2)
+        dns_top = QHBoxLayout()
+        dns_icon = QPushButton()
+        dns_icon.setIcon(_load_icon("dns", self.ss.text_secondary))
+        dns_icon.setIconSize(QSize(16, 16))
+        dns_icon.setFixedSize(18, 18)
+        dns_icon.setStyleSheet(f"QPushButton {{ background: transparent; border: none; }}")
+        dns_top.addWidget(dns_icon)
+        dns_top.addStretch()
+        dns_l.addLayout(dns_top)
+        dns_title = QLabel("DNS in Use:")
+        dns_title.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        dns_l.addWidget(dns_title)
+        dns_name_row = QHBoxLayout()
+        dns_name_row.setSpacing(6)
+        self._dns_name = QLabel("--")
+        self._dns_name.setStyleSheet(f"color: {self.ss.text}; font-size: 14px; font-weight: bold; background: transparent; border: none;")
+        dns_name_row.addWidget(self._dns_name)
+        self._dns_status_dot = QLabel()
+        self._dns_status_dot.setFixedSize(10, 10)
+        self._dns_status_dot.setStyleSheet("background-color: #4caf50; border-radius: 5px;")
+        dns_name_row.addWidget(self._dns_status_dot)
+        dns_name_row.addStretch()
+        dns_l.addLayout(dns_name_row)
+        self._last_change = QLabel("Last Change: --")
+        self._last_change.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 9px; background: transparent; border: none;")
+        dns_l.addWidget(self._last_change)
+        row2.addWidget(dns_card, 1)
+
+        v.addLayout(row2)
+
+        # Row 3: Ping Stat chart + Test Speed button
+        row3 = QHBoxLayout()
+        row3.setSpacing(8)
+
+        # Ping Stat
+        stat_card = _sub_card(self.ss)
+        stat_l = QVBoxLayout(stat_card)
+        stat_l.setContentsMargins(10, 8, 10, 8)
+        stat_l.setSpacing(2)
+        stat_top = QHBoxLayout()
+        stat_lbl = QLabel("Ping Stat")
+        stat_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
+        stat_top.addWidget(stat_lbl)
+        stat_top.addStretch()
+        self._ping_stat_avg = QLabel("Avg: --ms")
+        self._ping_stat_avg.setStyleSheet(f"color: {self.ss.accent}; font-size: 11px; font-weight: bold; background: transparent; border: none;")
+        stat_top.addWidget(self._ping_stat_avg)
+        stat_l.addLayout(stat_top)
+
+        self._line_chart = MiniLineChart()
+        stat_l.addWidget(self._line_chart)
+
+        row3.addWidget(stat_card, 1)
+
+        # Test Speed & Stability button
+        self.speed_btn = QPushButton("⚡ Test Speed & Stability")
+        self.speed_btn.setFixedHeight(44)
+        self.speed_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self.ss.accent};
+                color: white;
+                border: none;
+                border-radius: 8px;
                 font-size: 13px;
                 font-weight: bold;
-                background: transparent;
-                border: none;
-            """)
-        self._status_dot.setStyleSheet(f"background-color: {self.ss.text_secondary}; border-radius: 5px;")
+            }}
+            QPushButton:hover {{ background-color: {self.ss.accent_hover}; }}
+        """)
+        self.speed_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.speed_btn.clicked.connect(self.speed_test_clicked.emit)
+        row3.addWidget(self.speed_btn, 1)
+
+        v.addLayout(row3)
+
+    def _copy_ip(self):
+        from PySide6.QtWidgets import QApplication
+        QApplication.clipboard().setText(self._ip_value.text())
+
+    def update_info(self, adapter_name, ip_address, dns_servers):
+        self._adapter_name.setText(f"Active Connection: {adapter_name or '--'}")
+        self._ip_value.setText(ip_address or "--")
+        if dns_servers:
+            self._dns_name.setText(dns_servers[0] if len(dns_servers) == 1 else "  |  ".join(dns_servers))
+        else:
+            self._dns_name.setText("Automatic (DHCP)")
 
     def set_dns_status(self, color: str):
-        """Update the status dot color: '#4caf50' green, '#ff9800' yellow, '#f44336' red."""
-        self._status_dot.setStyleSheet(f"background-color: {color}; border-radius: 5px;")
+        self._dns_status_dot.setStyleSheet(f"background-color: {color}; border-radius: 5px;")
+
+    def add_ping_result(self, ms: float):
+        self._ping_history.append(ms)
+        if len(self._ping_history) > 20:
+            self._ping_history = self._ping_history[-20:]
+        self._bar_chart.set_data(self._ping_history)
+        avg = sum(self._ping_history) / len(self._ping_history)
+        self._ping_avg.setText(f"Avg: {avg:.0f}ms")
+
+    def add_ping_stat_result(self, ms: float):
+        self._ping_stat_history.append(ms)
+        if len(self._ping_stat_history) > 20:
+            self._ping_stat_history = self._ping_stat_history[-20:]
+        self._line_chart.set_data(self._ping_stat_history)
+        avg = sum(self._ping_stat_history) / len(self._ping_stat_history)
+        self._ping_stat_avg.setText(f"Avg: {avg:.0f}ms")
 
     def update_analytics(self, uptime_seconds: int, success_count: int, fail_count: int):
-        """Update the analytics labels with current stats."""
-        # Format uptime
         if uptime_seconds < 60:
             uptime_str = f"{uptime_seconds}s"
         elif uptime_seconds < 3600:
@@ -1039,39 +1320,26 @@ class NetworkInfoCard(QFrame):
             h = uptime_seconds // 3600
             m = (uptime_seconds % 3600) // 60
             uptime_str = f"{h}h {m}m"
+        self._uptime_value.setText(uptime_str)
 
         total = success_count + fail_count
-        if total > 0:
-            rate = (success_count / total) * 100
-            color = "#4caf50" if rate >= 95 else "#ff9800" if rate >= 70 else "#f44336"
-            self._success_label.setText(f"Success: {rate:.0f}%")
-            self._success_label.setStyleSheet(f"color: {color}; font-size: 10px; font-weight: bold; background: transparent; border: none;")
-        else:
-            self._success_label.setText("Success: --")
-            self._success_label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        self._queries_value.setText(f"{total} Queries")
 
-        self._uptime_label.setText(f"Uptime: {uptime_str}")
-        self._blocked_label.setText(f"Queries checked: {total}")
+    def set_last_change(self, text: str):
+        self._last_change.setText(f"Last Change: {text}")
 
     def refresh_theme(self, ss: StyleSheet):
         self.ss = ss
         self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 12px; }}")
-        for lbl in self.findChildren(QLabel):
-            txt = lbl.text()
-            if txt == "Network Status":
-                lbl.setStyleSheet(f"color: {ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
-            elif txt in ["Active Adapter", "IPv4 Address", "Current DNS"]:
-                lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
-            elif txt.startswith("Uptime:") or txt.startswith("Queries"):
-                lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
-            else:
-                lbl.setStyleSheet(f"color: {ss.text}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+        self.speed_btn.setStyleSheet(f"""
+            QPushButton {{ background-color: {ss.accent}; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; }}
+            QPushButton:hover {{ background-color: {ss.accent_hover}; }}
+        """)
+        self._copy_btn.setIcon(_load_icon("copy", ss.text_secondary))
+        self._ip_value.setStyleSheet(f"color: {ss.text}; font-size: 14px; font-weight: bold; background: transparent; border: none;")
 
     def set_direction(self, is_rtl: bool):
-        self._grid.setDirection(
-            QBoxLayout.RightToLeft if is_rtl
-            else QBoxLayout.LeftToRight
-        )
+        pass
 
 
 class CustomDNSCard(QFrame):
