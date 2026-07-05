@@ -982,17 +982,26 @@ class BandwidthWorker(QThread):
         self._running = True
 
     def run(self):
-        import psutil
-        prev = psutil.net_io_counters()
+        try:
+            import psutil
+        except ImportError:
+            return
+        try:
+            prev = psutil.net_io_counters()
+        except Exception:
+            return
         while self._running:
             self.msleep(self.interval_ms)
-            curr = psutil.net_io_counters()
-            dt = self.interval_ms / 1000.0
-            self.bandwidth_ready.emit(
-                (curr.bytes_sent - prev.bytes_sent) / dt,
-                (curr.bytes_recv - prev.bytes_recv) / dt,
-            )
-            prev = curr
+            try:
+                curr = psutil.net_io_counters()
+                dt = self.interval_ms / 1000.0
+                self.bandwidth_ready.emit(
+                    (curr.bytes_sent - prev.bytes_sent) / dt,
+                    (curr.bytes_recv - prev.bytes_recv) / dt,
+                )
+                prev = curr
+            except Exception:
+                pass
 
     def stop(self):
         self._running = False
