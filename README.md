@@ -118,6 +118,12 @@ dns-jantex/
 - **Removed redundant controls** — Test Latency button removed (covered by Test Speed & Stability)
 - **Improved typography** — larger fonts, better spacing, no text clipping
 
+## Support
+
+If you find DNS Jantex useful, consider supporting the development:
+
+[![Donate](https://img.shields.io/badge/Donate-Daramet-orange)](https://daramet.com/ZeLoExE)
+
 ## License
 
 MIT License - see [LICENSE.txt](LICENSE.txt)
