@@ -8,14 +8,14 @@
 *.nsi linguist-language=NSIS
 *.nsh linguist-language=NSIS
 
-# JSON
-*.json linguist-language=JSON
+# JSON - force GitHub to count as code
+*.json linguist-language=JSON linguist-vendored=false linguist-generated=false
 
-# QSS (Qt StyleSheets - treat as CSS)
-*.qss linguist-language=CSS
-
-# SVG icons
-*.svg linguist-language=SVG
+# SVG icons - force GitHub to count as code
+*.svg linguist-language=SVG linguist-vendored=false linguist-generated=false
 
 # Batch scripts
-*.bat linguist-language=Batch
+*.bat linguist-language=Batchfile linguist-vendored=false linguist-generated=false
+
+# Markdown
+*.md linguist-language=Markdown linguist-vendored=false
