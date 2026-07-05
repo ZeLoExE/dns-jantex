@@ -1,21 +1,11 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 
-# Python
-*.py linguist-language=Python
-
-# NSIS
-*.nsi linguist-language=NSIS
-*.nsh linguist-language=NSIS
-
-# JSON - force GitHub to count as code
-*.json linguist-language=JSON linguist-vendored=false linguist-generated=false
-
-# SVG icons - force GitHub to count as code
-*.svg linguist-language=SVG linguist-vendored=false linguist-generated=false
-
-# Batch scripts
-*.bat linguist-language=Batchfile linguist-vendored=false linguist-generated=false
-
-# Markdown
-*.md linguist-language=Markdown linguist-vendored=false
+# Override linguist for all code files
+*.py linguist-detectable=true
+*.nsi linguist-detectable=true
+*.nsh linguist-detectable=true
+*.json linguist-detectable=true linguist-generated=false
+*.svg linguist-detectable=true linguist-generated=false
+*.bat linguist-detectable=true
+*.md linguist-detectable=true
