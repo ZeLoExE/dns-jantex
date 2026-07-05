@@ -1,0 +1,21 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Python
+*.py linguist-language=Python
+
+# NSIS
+*.nsi linguist-language=NSIS
+*.nsh linguist-language=NSIS
+
+# JSON
+*.json linguist-language=JSON
+
+# QSS (Qt StyleSheets - treat as CSS)
+*.qss linguist-language=CSS
+
+# SVG icons
+*.svg linguist-language=SVG
+
+# Batch scripts
+*.bat linguist-language=Batch
