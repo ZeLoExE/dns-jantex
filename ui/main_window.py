@@ -4,7 +4,7 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout,
     QLabel, QPushButton, QComboBox, QFrame, QMessageBox,
-    QSystemTrayIcon, QApplication, QSplashScreen, QButtonGroup
+    QSystemTrayIcon, QApplication, QSplashScreen, QButtonGroup, QCheckBox
 )
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize
 from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPainter
@@ -15,7 +15,7 @@ from ui.custom_dns_dialog import CustomDNSManagerDialog
 from core.dns_manager import DNSManager
 from core.network_adapter import NetworkAdapterDetector
 from core.dns_providers import DNS_PROVIDERS
-from core.custom_dns import load_custom_dns
+from core.custom_dns import load_custom_dns, add_custom_dns
 
 
 class PingWorker(QThread):
@@ -87,8 +87,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("DNS Changer")
-        self.setMinimumSize(1050, 700)
-        self.resize(1100, 750)
+        self.setMinimumSize(1050, 640)
+        self.resize(1100, 700)
 
         # Load translations
         self.translations = self._load_translations()
@@ -183,7 +183,9 @@ class MainWindow(QMainWindow):
             "dark_mode": self.dark_mode,
             "language": self.current_lang,
             "last_provider": self._get_selected_provider_index(),
-            "auto_apply": self.settings.get("auto_apply", False)
+            "auto_apply": self.settings.get("auto_apply", False),
+            "favorites": sorted(self.dns_card.favorites) if self.dns_card else self.settings.get("favorites", []),
+            "auto_flush_dns": self.auto_flush_check.isChecked(),
         }
 
         with open(settings_file, "w", encoding="utf-8") as f:
@@ -201,8 +203,8 @@ class MainWindow(QMainWindow):
 
         # Main layout
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(20, 16, 20, 16)
-        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(20, 12, 20, 12)
+        main_layout.setSpacing(12)
 
         # Header
         header_layout = QHBoxLayout()
@@ -216,6 +218,35 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(self.title)
 
         header_layout.addStretch()
+
+        # Auto-Flush DNS toggle
+        self.auto_flush_check = QCheckBox(" Auto-Flush DNS")
+        self.auto_flush_check.setChecked(self.settings.get("auto_flush_dns", False))
+        self.auto_flush_check.setFixedHeight(38)
+        self.auto_flush_check.setStyleSheet(f"""
+            QCheckBox {{
+                color: {self.style_sheet.text};
+                font-size: 12px;
+                spacing: 6px;
+            }}
+            QCheckBox::indicator {{
+                width: 16px; height: 16px;
+                border-radius: 3px;
+                border: 2px solid {self.style_sheet.border};
+                background: transparent;
+                margin-top: 1px;
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: {self.style_sheet.accent};
+                border-color: {self.style_sheet.accent};
+            }}
+            QCheckBox:hover {{
+                color: {self.style_sheet.accent};
+            }}
+        """)
+        self.auto_flush_check.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.auto_flush_check.stateChanged.connect(self._toggle_auto_flush)
+        header_layout.addWidget(self.auto_flush_check, 0, Qt.AlignmentFlag.AlignVCenter)
 
         # Theme toggle button with icon
         self.theme_btn = QPushButton()
@@ -248,18 +279,19 @@ class MainWindow(QMainWindow):
 
         self.custom_dns_card = CustomDNSCard(self.style_sheet)
         self.custom_dns_card.custom_dns_apply.connect(self._on_apply_custom_dns)
+        self.custom_dns_card.save_preset.connect(self._on_save_preset)
         top_cards_layout.addWidget(self.custom_dns_card, 35)
 
         main_layout.addLayout(top_cards_layout)
 
         # DNS settings card (stretches to fill remaining space)
         self.dns_card = DNSCard(self.style_sheet)
-        self.dns_card.setMinimumHeight(300)
+        self.dns_card.favorites = set(self.settings.get("favorites", []))
         self._load_all_providers()
         self.dns_card.provider_changed.connect(self._on_provider_changed)
         self.dns_card.manage_clicked.connect(self._open_custom_dns_manager)
-        self.dns_card.ping_clicked.connect(self._on_ping_clicked)
         self.dns_card.smart_clicked.connect(self._on_smart_connect)
+        self.dns_card.favorites_changed.connect(self._on_favorites_changed)
         main_layout.addWidget(self.dns_card, 1)
 
         # Action buttons
@@ -313,6 +345,7 @@ class MainWindow(QMainWindow):
         self.lang_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
         self.title.setStyleSheet(self.style_sheet.get_title_style())
 
+        self._refresh_auto_flush_style()
         self._update_theme_button()
         self._update_lang_button()
 
@@ -323,8 +356,6 @@ class MainWindow(QMainWindow):
         color = self.style_sheet.text
         self.dns_card.sort_btn.setIcon(self._load_icon("sort", color))
         self.dns_card.sort_btn.setIconSize(QSize(14, 14))
-        self.dns_card.ping_btn.setIcon(self._load_icon("latency", color))
-        self.dns_card.ping_btn.setIconSize(QSize(14, 14))
         self.dns_card.manage_btn.setIcon(self._load_icon("manage", color))
         self.dns_card.manage_btn.setIconSize(QSize(14, 14))
         for row in self.dns_card.rows:
@@ -387,7 +418,6 @@ class MainWindow(QMainWindow):
         self.reset_btn.setText(self.t("reset_dhcp"))
         self.flush_btn.setText(self.t("flush_dns"))
         if hasattr(self, 'dns_card') and self.dns_card:
-            self.dns_card.ping_btn.setText(" " + self.t("test_latency"))
             self.dns_card.manage_btn.setText(" " + self.t("manage_dns"))
             self.dns_card.sort_btn.setText(" " + self.t("sort"))
             self.dns_card.title_label.setText(self.t("dns_settings"))
@@ -483,7 +513,7 @@ class MainWindow(QMainWindow):
         for provider in DNS_PROVIDERS:
             self.dns_card.add_provider(provider.name, provider.primary, provider.secondary, provider.category, provider.tags)
 
-        # Add custom providers
+        # Add custom providers from the unified store
         for entry in load_custom_dns():
             self.dns_card.add_provider(entry.name, entry.primary, entry.secondary)
 
@@ -506,6 +536,39 @@ class MainWindow(QMainWindow):
         self.dns_worker.finished.connect(self._on_dns_operation_finished)
         self.dns_worker.start()
 
+    def _on_save_preset(self, primary: str, secondary: str):
+        """Save a custom DNS pair to the unified custom DNS store."""
+        # Reject duplicate primary+secondary pairs
+        for entry in load_custom_dns():
+            if entry.primary == primary and entry.secondary == secondary:
+                self.status_label.setText("This preset already exists")
+                QTimer.singleShot(2000, lambda: self.status_label.setText(""))
+                return
+
+        # Auto-generate name: "Custom Preset 1", "Custom Preset 2", ...
+        existing_names = [e.name for e in load_custom_dns()]
+        existing_nums = []
+        for name in existing_names:
+            if name.startswith("Custom Preset "):
+                try:
+                    existing_nums.append(int(name.split("Custom Preset ")[1]))
+                except (ValueError, IndexError):
+                    pass
+        next_num = max(existing_nums, default=0) + 1
+        preset_name = f"Custom Preset {next_num}"
+
+        # Save to the same store used by Manage DNS modal
+        entry = add_custom_dns(preset_name, primary, secondary or "")
+
+        # Inject into the live DNS table as a favorite at the top
+        self.dns_card.favorites.add(preset_name)
+        self.settings["favorites"] = sorted(self.dns_card.favorites)
+        self.dns_card.add_provider(preset_name, primary, secondary or "", category="custom")
+        self.dns_card._rebuild_list()
+
+        self.status_label.setText(f"Preset saved: {preset_name}")
+        QTimer.singleShot(2000, lambda: self.status_label.setText(""))
+
     def _get_selected_provider_index(self) -> int:
         """Get the index of the currently selected provider."""
         if self.dns_card:
@@ -516,8 +579,48 @@ class MainWindow(QMainWindow):
 
     def _on_provider_changed(self, index: int):
         """Handle DNS provider selection change."""
-        # Save the selection
         self._save_settings()
+
+    def _on_favorites_changed(self, favorites: list):
+        """Handle favorites list change."""
+        self.settings["favorites"] = favorites
+        self._save_settings()
+
+    def _refresh_auto_flush_style(self):
+        """Update the Auto-Flush checkbox to match the current theme."""
+        ss = self.style_sheet
+        self.auto_flush_check.setStyleSheet(f"""
+            QCheckBox {{
+                color: {ss.text};
+                font-size: 12px;
+                spacing: 6px;
+            }}
+            QCheckBox::indicator {{
+                width: 16px; height: 16px;
+                border-radius: 3px;
+                border: 2px solid {ss.border};
+                background: transparent;
+                margin-top: 1px;
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: {ss.accent};
+                border-color: {ss.accent};
+            }}
+            QCheckBox:hover {{
+                color: {ss.accent};
+            }}
+        """)
+
+    def _toggle_auto_flush(self, state):
+        """Handle Auto-Flush DNS toggle change."""
+        self.settings["auto_flush_dns"] = state == Qt.CheckState.Checked.value
+        self._save_settings()
+
+    def _auto_flush_after_apply(self):
+        """Flush DNS cache automatically after a successful Apply."""
+        self.dns_worker = DNSWorker("flush")
+        self.dns_worker.finished.connect(lambda ok, msg: None)
+        self.dns_worker.start()
 
     def _on_apply_clicked(self):
         """Handle Apply button click."""
@@ -557,6 +660,8 @@ class MainWindow(QMainWindow):
 
     def _on_dns_operation_finished(self, success: bool, message: str):
         """Handle DNS operation completion."""
+        was_set = success and self.dns_worker and self.dns_worker.operation == "set"
+
         if success:
             import time
             self._dns_applied_at = time.time()
@@ -573,13 +678,14 @@ class MainWindow(QMainWindow):
         self.status_label.setText("")
         self.dns_worker = None
 
+        # Auto-flush DNS after a successful Apply, if enabled
+        if was_set and self.auto_flush_check.isChecked():
+            self._auto_flush_after_apply()
+
     def _on_ping_clicked(self):
-        """Handle Test Latency button click."""
+        """Handle Test Speed & Stability button click."""
         if self.ping_worker and self.ping_worker.isRunning():
             return
-
-        self.dns_card.ping_btn.setEnabled(False)
-        self.dns_card.ping_btn.setText(" Testing...")
 
         self.ping_worker = PingWorker(DNS_PROVIDERS)
         self.ping_worker.result_ready.connect(self._on_ping_result)
@@ -595,8 +701,7 @@ class MainWindow(QMainWindow):
 
     def _on_ping_finished(self):
         """Handle ping completion."""
-        self.dns_card.ping_btn.setEnabled(True)
-        self.dns_card.ping_btn.setText(self.t("test_latency"))
+        pass
 
     def _on_smart_connect(self):
         """Benchmark all providers and auto-select the fastest one."""
@@ -604,7 +709,6 @@ class MainWindow(QMainWindow):
             return
 
         self.dns_card.smart_btn.setEnabled(False)
-        self.dns_card.ping_btn.setEnabled(False)
         self.status_label.setText("Benchmarking DNS providers...")
 
         self._smart_benchmark_results = {}
@@ -622,8 +726,6 @@ class MainWindow(QMainWindow):
         """Select the fastest provider after benchmark completes."""
         self.ping_worker = None
         self.dns_card.smart_btn.setEnabled(True)
-        self.dns_card.ping_btn.setEnabled(True)
-        self.dns_card.ping_btn.setText(self.t("test_latency"))
 
         if self._smart_benchmark_results:
             fastest_idx = min(self._smart_benchmark_results, key=self._smart_benchmark_results.get)
@@ -657,8 +759,6 @@ class MainWindow(QMainWindow):
         self.apply_btn.setEnabled(enabled)
         self.reset_btn.setEnabled(enabled)
         self.flush_btn.setEnabled(enabled)
-        if self.dns_card:
-            self.dns_card.ping_btn.setEnabled(enabled)
 
     def _show_success(self, message: str):
         """Show success notification."""
