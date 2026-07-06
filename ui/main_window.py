@@ -773,12 +773,13 @@ class MainWindow(QMainWindow):
         """Show success notification."""
         msg = QMessageBox(self)
         msg.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        msg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         msg.setIcon(QMessageBox.Icon.Information)
         msg.setWindowTitle(self.t("success"))
         msg.setText(message)
         msg.setStyleSheet(self.style_sheet.get_dialog_style())
         self._center_dialog(msg)
-        msg.exec()
+        msg.open()
 
     def _play_success_sound(self):
         """Play a soft confirmation chime."""
@@ -824,23 +825,25 @@ class MainWindow(QMainWindow):
         """Show error notification."""
         msg = QMessageBox(self)
         msg.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        msg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         msg.setIcon(QMessageBox.Icon.Critical)
         msg.setWindowTitle(self.t("error"))
         msg.setText(message)
         msg.setStyleSheet(self.style_sheet.get_dialog_style())
         self._center_dialog(msg)
-        msg.exec()
+        msg.open()
 
     def _show_warning(self, message: str):
         """Show warning notification."""
         msg = QMessageBox(self)
         msg.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        msg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         msg.setIcon(QMessageBox.Icon.Warning)
         msg.setWindowTitle(self.t("warning"))
         msg.setText(message)
         msg.setStyleSheet(self.style_sheet.get_dialog_style())
         self._center_dialog(msg)
-        msg.exec()
+        msg.open()
 
     def closeEvent(self, event):
         """Handle window close event."""
