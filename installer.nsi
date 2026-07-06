@@ -84,7 +84,7 @@ Section "DNS Jantex (required)" SecMain
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
         "InstallLocation" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
-        "DisplayIcon" '"$INSTDIR\icon.ico"'
+        "DisplayIcon" '"$INSTDIR\DNSChanger.exe"'
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
         "Publisher" "DNS Jantex"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
@@ -102,12 +102,12 @@ Section "DNS Jantex (required)" SecMain
 SectionEnd
 
 Section "Desktop Shortcut" SecDesktop
-    CreateShortCut "$DESKTOP\DNS Jantex.lnk" "$INSTDIR\DNSChanger.exe" "" "$INSTDIR\icon.ico"
+    CreateShortCut "$DESKTOP\DNS Jantex.lnk" "$INSTDIR\DNSChanger.exe" "" "$INSTDIR\DNSChanger.exe" 0
 SectionEnd
 
 Section "Start Menu Shortcuts" SecStartMenu
     CreateDirectory "$SMPROGRAMS\DNS Jantex"
-    CreateShortCut "$SMPROGRAMS\DNS Jantex\DNS Jantex.lnk" "$INSTDIR\DNSChanger.exe" "" "$INSTDIR\icon.ico"
+    CreateShortCut "$SMPROGRAMS\DNS Jantex\DNS Jantex.lnk" "$INSTDIR\DNSChanger.exe" "" "$INSTDIR\DNSChanger.exe" 0
     CreateShortCut "$SMPROGRAMS\DNS Jantex\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 SectionEnd
 
