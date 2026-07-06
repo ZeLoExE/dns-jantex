@@ -477,31 +477,71 @@ class StyleSheet:
         """
 
     def get_dialog_style(self) -> str:
-        """Get dialog stylesheet with proper text colors."""
-        return f"""
-            QMessageBox {{
-                background-color: {self.card};
-            }}
-            QMessageBox QLabel {{
-                color: {self.text};
-                font-size: 13px;
-                background: transparent;
-                border: none;
-            }}
-            QMessageBox QPushButton {{
-                background-color: {self.accent};
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 6px 20px;
-                font-size: 12px;
-                font-weight: bold;
-                min-width: 60px;
-            }}
-            QMessageBox QPushButton:hover {{
-                background-color: {self.accent_hover};
-            }}
-        """
+        """Get glassmorphism dialog stylesheet."""
+        if self.dark_mode:
+            return f"""
+                QMessageBox {{
+                    background-color: rgba(24, 27, 35, 220);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 16px;
+                }}
+                QMessageBox QLabel {{
+                    color: {self.text};
+                    font-size: 14px;
+                    font-weight: 500;
+                    background: transparent;
+                    border: none;
+                }}
+                QMessageBox QPushButton {{
+                    background-color: {self.accent};
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 8px 24px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    min-width: 70px;
+                    min-height: 28px;
+                }}
+                QMessageBox QPushButton:hover {{
+                    background-color: {self.accent_hover};
+                }}
+                QMessageBox QPushButton:pressed {{
+                    background-color: {self.accent};
+                }}
+            """
+        else:
+            return f"""
+                QMessageBox {{
+                    background-color: rgba(255, 255, 255, 230);
+                    border: 1px solid rgba(255, 255, 255, 0.6);
+                    border-radius: 16px;
+                }}
+                QMessageBox QLabel {{
+                    color: {self.text};
+                    font-size: 14px;
+                    font-weight: 500;
+                    background: transparent;
+                    border: none;
+                }}
+                QMessageBox QPushButton {{
+                    background-color: {self.accent};
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 8px 24px;
+                    font-size: 13px;
+                    font-weight: bold;
+                    min-width: 70px;
+                    min-height: 28px;
+                }}
+                QMessageBox QPushButton:hover {{
+                    background-color: {self.accent_hover};
+                }}
+                QMessageBox QPushButton:pressed {{
+                    background-color: {self.accent};
+                }}
+            """
 
 
 class Fonts:
