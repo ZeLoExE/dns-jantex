@@ -37,7 +37,7 @@
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshot-2026.png" width="700">
+  <img src="docs/screenshot.png" width="700">
   <br>
   <em>Dark mode with latency testing</em>
 </p>
