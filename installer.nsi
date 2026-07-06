@@ -63,7 +63,7 @@ Section "DNS Jantex (required)" SecMain
     File "dist\DNSChanger\DNSChanger.exe"
 
     ; Install updater
-    File "dist\Updater\Updater.exe"
+    File "dist\Updater.exe"
 
     ; Install internal dependencies
     SetOutPath "$INSTDIR\_internal"
