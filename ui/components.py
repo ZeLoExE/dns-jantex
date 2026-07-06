@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QBoxLayout, QLabel,
     QPushButton, QLineEdit, QRadioButton, QButtonGroup,
-    QScrollArea, QWidget
+    QScrollArea, QWidget, QDialog, QGraphicsOpacityEffect
 )
 from PySide6.QtCore import Qt, Signal, QSize, QTimer, QThread, QPropertyAnimation, QEasingCurve, QParallelAnimationGroup
 from PySide6.QtGui import QFont, QColor, QIcon, QPainter, QPen, QBrush
@@ -935,6 +935,8 @@ class DNSCard(QFrame):
 
 
 
+
+
 class BandwidthWorker(QThread):
     """Background thread that samples network I/O and emits throughput."""
     bandwidth_ready = Signal(float, float)  # upload_speed, download_speed (bytes/s)
@@ -1746,3 +1748,148 @@ class ActionButton(QPushButton):
     def refresh_theme(self, style_sheet: StyleSheet):
         self.ss = style_sheet
         self._apply_style()
+
+
+class SuccessDialog(QDialog):
+    """Custom frameless dialog for success/error/warning notifications."""
+
+    def __init__(self, title: str, message: str, style_sheet: StyleSheet,
+                 icon_type: str = "success", parent=None):
+        super().__init__(parent)
+        self.ss = style_sheet
+        self.icon_type = icon_type
+        self._setup_ui(title, message)
+        self._setup_animation()
+
+    def _setup_ui(self, title: str, message: str):
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setModal(True)
+        self.setFixedWidth(380)
+
+        # Main container with rounded corners and shadow
+        self.container = QFrame()
+        self.container.setObjectName("dialogContainer")
+        self._update_container_style()
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.container)
+
+        container_layout = QVBoxLayout(self.container)
+        container_layout.setContentsMargins(28, 28, 28, 24)
+        container_layout.setSpacing(16)
+
+        # Icon
+        icon_label = QLabel()
+        icon_label.setFixedSize(52, 52)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_label.setStyleSheet(self._get_icon_style())
+        icon_label.setText(self._get_icon_text())
+        container_layout.addWidget(icon_label, 0, Qt.AlignmentFlag.AlignHCenter)
+
+        # Title
+        title_label = QLabel(title)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_label.setStyleSheet(f"""
+            color: {self.ss.text};
+            font-size: 18px;
+            font-weight: bold;
+            background: transparent;
+            border: none;
+        """)
+        container_layout.addWidget(title_label)
+
+        # Message
+        msg_label = QLabel(message)
+        msg_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        msg_label.setWordWrap(True)
+        msg_label.setStyleSheet(f"""
+            color: {self.ss.text_secondary};
+            font-size: 13px;
+            background: transparent;
+            border: none;
+            line-height: 1.4;
+        """)
+        container_layout.addWidget(msg_label)
+
+        # OK Button
+        ok_btn = QPushButton("OK")
+        ok_btn.setFixedHeight(40)
+        ok_btn.setMinimumWidth(120)
+        ok_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        ok_btn.clicked.connect(self.accept)
+        ok_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self.ss.accent};
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {self.ss.accent_hover};
+            }}
+            QPushButton:pressed {{
+                background-color: {self.ss.accent};
+            }}
+        """)
+        container_layout.addWidget(ok_btn, 0, Qt.AlignmentFlag.AlignHCenter)
+
+    def _update_container_style(self):
+        if self.ss.dark_mode:
+            self.container.setStyleSheet(f"""
+                QFrame#dialogContainer {{
+                    background-color: rgba(24, 27, 35, 240);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 16px;
+                }}
+            """)
+        else:
+            self.container.setStyleSheet(f"""
+                QFrame#dialogContainer {{
+                    background-color: rgba(255, 255, 255, 245);
+                    border: 1px solid rgba(0, 0, 0, 0.06);
+                    border-radius: 16px;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+                }}
+            """)
+
+    def _get_icon_style(self) -> str:
+        colors = {
+            "success": ("#22c55e", "#22c55e20"),
+            "error": ("#ef4444", "#ef444420"),
+            "warning": ("#f59e0b", "#f59e0b20"),
+        }
+        color, bg = colors.get(self.icon_type, colors["success"])
+        return f"""
+            background-color: {bg};
+            border-radius: 26px;
+            font-size: 24px;
+            color: {color};
+        """
+
+    def _get_icon_text(self) -> str:
+        icons = {"success": "✓", "error": "✕", "warning": "!"}
+        return icons.get(self.icon_type, "✓")
+
+    def _setup_animation(self):
+        self.opacity_effect = QGraphicsOpacityEffect(self.container)
+        self.container.setGraphicsEffect(self.opacity_effect)
+        self.opacity_effect.setOpacity(0.0)
+
+        self.fade_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_animation.setDuration(200)
+        self.fade_animation.setStartValue(0.0)
+        self.fade_animation.setEndValue(1.0)
+        self.fade_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Center over parent
+        if self.parent():
+            parent_center = self.parent().frameGeometry().center()
+            self.move(parent_center.x() - self.width() // 2,
+                      parent_center.y() - self.height() // 2)
+        self.fade_animation.start()

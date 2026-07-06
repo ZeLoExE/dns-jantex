@@ -1,21 +1,106 @@
 import json
 import os
+import sys
+import ctypes
 from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout,
-    QLabel, QPushButton, QComboBox, QFrame, QMessageBox,
+    QLabel, QPushButton, QComboBox, QFrame,
     QSystemTrayIcon, QApplication, QSplashScreen, QButtonGroup, QCheckBox
 )
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize
 from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPainter
 
 from ui.styles import StyleSheet, Fonts
-from ui.components import DNSCard, NetworkInfoCard, CustomDNSCard, ActionButton
+from ui.components import DNSCard, NetworkInfoCard, CustomDNSCard, ActionButton, SuccessDialog
 from ui.custom_dns_dialog import CustomDNSManagerDialog
 from core.dns_manager import DNSManager
 from core.network_adapter import NetworkAdapterDetector
 from core.dns_providers import DNS_PROVIDERS
 from core.custom_dns import load_custom_dns, add_custom_dns
+
+# Windows DWM API constants for Windows 11 effects
+DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+DWMWA_WINDOW_CORNER_PREFERENCE = 33
+DWMWCP_ROUND = 2
+
+
+class CustomTitleBar(QWidget):
+    """Custom frameless window title bar with drag support."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("titleBar")
+        self.setFixedHeight(40)
+        self._dragging = False
+        self._drag_position = None
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(12, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # App icon
+        self.icon_label = QLabel()
+        self.icon_label.setFixedSize(20, 20)
+        icon_path = Path(__file__).parent.parent / "assets" / "icon.png"
+        if icon_path.exists():
+            pixmap = QPixmap(str(icon_path)).scaled(
+                20, 20, Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation
+            )
+            self.icon_label.setPixmap(pixmap)
+        layout.addWidget(self.icon_label)
+
+        # Title
+        self.title_label = QLabel("DNS Changer")
+        self.title_label.setStyleSheet("font-size: 12px; font-weight: 500; background: transparent; border: none;")
+        layout.addWidget(self.title_label)
+
+        layout.addStretch()
+
+        # Minimize button
+        self.minimize_btn = QPushButton("─")
+        self.minimize_btn.setFixedSize(46, 32)
+        self.minimize_btn.setToolTip("Minimize")
+        self.minimize_btn.clicked.connect(self._minimize)
+        layout.addWidget(self.minimize_btn)
+
+        # Close button
+        self.close_btn = QPushButton("✕")
+        self.close_btn.setFixedSize(46, 32)
+        self.close_btn.setToolTip("Close")
+        self.close_btn.clicked.connect(self._close)
+        layout.addWidget(self.close_btn)
+
+    def _minimize(self):
+        self.window().showMinimized()
+
+    def _close(self):
+        self.window().close()
+
+    def update_theme(self, style_sheet: StyleSheet):
+        """Update title bar styling for current theme."""
+        self.setStyleSheet(style_sheet.get_title_bar_style())
+        self.title_label.setStyleSheet(f"color: {style_sheet.text}; font-size: 12px; font-weight: 500; background: transparent; border: none;")
+        self.minimize_btn.setStyleSheet(style_sheet.get_minimize_btn_style())
+        self.close_btn.setStyleSheet(style_sheet.get_close_btn_style())
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._dragging = True
+            self._drag_position = event.globalPosition().toPoint() - self.window().pos()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self._dragging and self._drag_position:
+            self.window().move(event.globalPosition().toPoint() - self._drag_position)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._dragging = False
+        self._drag_position = None
 
 
 class PingWorker(QThread):
@@ -86,9 +171,14 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+
+        # Frameless window setup
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.Window
+        )
         self.setWindowTitle("DNS Changer")
-        self.setMinimumSize(1050, 640)
-        self.resize(1100, 700)
+        self.setFixedSize(1050, 775)
 
         # Load translations
         self.translations = self._load_translations()
@@ -106,6 +196,7 @@ class MainWindow(QMainWindow):
         self.network_card = None
         self.ping_worker = None
         self.dns_worker = None
+        self.title_bar = None
 
         # Analytics state
         self._dns_applied_at = None
@@ -115,6 +206,9 @@ class MainWindow(QMainWindow):
         # Set up UI
         self._setup_ui()
         self._apply_theme()
+
+        # Enable Windows 11 DWM effects (shadow + rounded corners)
+        self._setup_dwm()
 
         # Load current DNS info
         self._refresh_dns_info()
@@ -195,6 +289,48 @@ class MainWindow(QMainWindow):
         """Get translated text for the current language."""
         return self.translations.get(self.current_lang, {}).get(key, key)
 
+    def _setup_dwm(self):
+        """Enable Windows 11 DWM effects (native shadow + rounded corners)."""
+        if sys.platform != "win32":
+            return
+
+        try:
+            hwnd = int(self.winId())
+
+            # Enable rounded corners (Windows 11+)
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd, DWMWA_WINDOW_CORNER_PREFERENCE,
+                ctypes.byref(ctypes.c_int(DWMWCP_ROUND)), 4
+            )
+
+            # Enable dark mode title bar if dark theme
+            if self.dark_mode:
+                ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE,
+                    ctypes.byref(ctypes.c_int(1)), 4
+                )
+            else:
+                ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                    hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE,
+                    ctypes.byref(ctypes.c_int(0)), 4
+                )
+
+            # Extend frame into client area for native shadow
+            class MARGINS(ctypes.Structure):
+                _fields_ = [
+                    ("cxLeftWidth", ctypes.c_int),
+                    ("cxRightWidth", ctypes.c_int),
+                    ("cyTopHeight", ctypes.c_int),
+                    ("cyBottomHeight", ctypes.c_int),
+                ]
+
+            margins = MARGINS(0, 0, 1, 0)  # 1px top for shadow
+            ctypes.windll.dwmapi.DwmExtendFrameIntoClientArea(
+                hwnd, ctypes.byref(margins)
+            )
+        except Exception:
+            pass  # Silently ignore DWM errors on older Windows
+
     def _setup_ui(self):
         """Set up the main UI layout."""
         # Central widget
@@ -203,8 +339,18 @@ class MainWindow(QMainWindow):
 
         # Main layout
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(24, 14, 24, 14)
-        main_layout.setSpacing(14)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Custom title bar (frameless window)
+        self.title_bar = CustomTitleBar(self)
+        main_layout.addWidget(self.title_bar)
+
+        # Content area with margins
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(24, 14, 24, 14)
+        content_layout.setSpacing(14)
 
         # Header
         header_layout = QHBoxLayout()
@@ -267,7 +413,7 @@ class MainWindow(QMainWindow):
         self._update_lang_button()
         header_layout.addWidget(self.lang_btn)
 
-        main_layout.addLayout(header_layout)
+        content_layout.addLayout(header_layout)
 
         # Network info + Custom DNS cards side by side (compact, fixed height)
         top_cards_layout = QHBoxLayout()
@@ -282,7 +428,7 @@ class MainWindow(QMainWindow):
         self.custom_dns_card.save_preset.connect(self._on_save_preset)
         top_cards_layout.addWidget(self.custom_dns_card, 35)
 
-        main_layout.addLayout(top_cards_layout)
+        content_layout.addLayout(top_cards_layout)
 
         # DNS settings card (stretches to fill remaining space)
         self.dns_card = DNSCard(self.style_sheet)
@@ -292,7 +438,7 @@ class MainWindow(QMainWindow):
         self.dns_card.manage_clicked.connect(self._open_custom_dns_manager)
         self.dns_card.smart_clicked.connect(self._on_smart_connect)
         self.dns_card.favorites_changed.connect(self._on_favorites_changed)
-        main_layout.addWidget(self.dns_card, 1)
+        content_layout.addWidget(self.dns_card, 1)
 
         # Action buttons
         buttons_layout = QHBoxLayout()
@@ -313,19 +459,29 @@ class MainWindow(QMainWindow):
         self.flush_btn.clicked.connect(self._on_flush_clicked)
         buttons_layout.addWidget(self.flush_btn)
 
-        main_layout.addLayout(buttons_layout)
+        content_layout.addLayout(buttons_layout)
 
         # Status bar
         self.status_label = QLabel("")
         self.status_label.setStyleSheet(self.style_sheet.get_label_style(secondary=True))
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        main_layout.addWidget(self.status_label)
+        content_layout.addWidget(self.status_label)
+
+        # Add content area to main layout
+        main_layout.addWidget(content_widget, 1)
 
     def _apply_theme(self):
         """Apply the current theme to all components."""
         self.style_sheet = StyleSheet(self.dark_mode)
 
         self.setStyleSheet(self.style_sheet.get_main_window_style())
+
+        # Update title bar theme
+        if self.title_bar:
+            self.title_bar.update_theme(self.style_sheet)
+
+        # Update DWM dark mode attribute
+        self._setup_dwm()
 
         if self.network_card:
             self.network_card.refresh_theme(self.style_sheet)
@@ -760,26 +916,10 @@ class MainWindow(QMainWindow):
         self.reset_btn.setEnabled(enabled)
         self.flush_btn.setEnabled(enabled)
 
-    def _center_dialog(self, dialog):
-        """Center a frameless dialog on the parent window."""
-        parent = dialog.parentWidget()
-        if parent:
-            dialog.adjustSize()
-            center = parent.rect().center()
-            global_pos = parent.mapToGlobal(center)
-            dialog.move(global_pos.x() - dialog.width() // 2, global_pos.y() - dialog.height() // 2)
-
     def _show_success(self, message: str):
         """Show success notification."""
-        msg = QMessageBox(self)
-        msg.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        msg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        msg.setIcon(QMessageBox.Icon.Information)
-        msg.setWindowTitle(self.t("success"))
-        msg.setText(message)
-        msg.setStyleSheet(self.style_sheet.get_dialog_style())
-        self._center_dialog(msg)
-        msg.open()
+        dialog = SuccessDialog(self.t("success"), message, self.style_sheet, "success", self)
+        dialog.exec()
 
     def _play_success_sound(self):
         """Play a soft confirmation chime."""
@@ -823,27 +963,13 @@ class MainWindow(QMainWindow):
 
     def _show_error(self, message: str):
         """Show error notification."""
-        msg = QMessageBox(self)
-        msg.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        msg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        msg.setIcon(QMessageBox.Icon.Critical)
-        msg.setWindowTitle(self.t("error"))
-        msg.setText(message)
-        msg.setStyleSheet(self.style_sheet.get_dialog_style())
-        self._center_dialog(msg)
-        msg.open()
+        dialog = SuccessDialog(self.t("error"), message, self.style_sheet, "error", self)
+        dialog.exec()
 
     def _show_warning(self, message: str):
         """Show warning notification."""
-        msg = QMessageBox(self)
-        msg.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-        msg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        msg.setIcon(QMessageBox.Icon.Warning)
-        msg.setWindowTitle(self.t("warning"))
-        msg.setText(message)
-        msg.setStyleSheet(self.style_sheet.get_dialog_style())
-        self._center_dialog(msg)
-        msg.open()
+        dialog = SuccessDialog(self.t("warning"), message, self.style_sheet, "warning", self)
+        dialog.exec()
 
     def closeEvent(self, event):
         """Handle window close event."""

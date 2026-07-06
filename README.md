@@ -29,6 +29,8 @@
 - **Flush & reset** — clear DNS cache or restore automatic (DHCP) settings
 - **Manage DNS modal** — add, edit, and delete custom DNS entries with a unified data store
 - **Installer** — desktop and Start Menu shortcuts included
+- **Frameless window** — modern custom title bar with native Windows 11 shadow and rounded corners
+- **Custom dialog system** — themed frameless dialogs replacing native message boxes
 
 ## Screenshots
 
@@ -104,6 +106,15 @@ dns-jantex/
 ├── build.spec              # PyInstaller config
 └── installer.nsi           # NSIS installer script
 ```
+
+## What's New in v2.4
+
+- **Frameless window** — native Windows 11 look with rounded corners, DWM shadow, and custom title bar
+- **Custom title bar** — app icon, title, minimize and close buttons with Windows 11 hover effects
+- **Window dragging** — drag the title bar to reposition the window
+- **Custom dialogs** — themed frameless success/error/warning dialogs with fade-in animation and centered positioning
+- **Fixed dialog centering** — dialogs now always appear centered over the main window
+- **Fixed window sizing** — non-resizable window with optimized layout for DNS list visibility
 
 ## What's New in v2.0
 

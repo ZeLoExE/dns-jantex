@@ -91,6 +91,56 @@ class StyleSheet:
             }}
         """
 
+    def get_title_bar_style(self) -> str:
+        """Get the custom title bar container stylesheet."""
+        return f"""
+            QWidget#titleBar {{
+                background-color: {self.bg};
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+            }}
+        """
+
+    def get_minimize_btn_style(self) -> str:
+        """Get minimize button stylesheet matching Windows 11."""
+        return f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {self.text};
+                border: none;
+                border-radius: 0px;
+                font-size: 16px;
+                font-weight: normal;
+            }}
+            QPushButton:hover {{
+                background-color: {self.hover};
+            }}
+            QPushButton:pressed {{
+                background-color: {self.border};
+            }}
+        """
+
+    def get_close_btn_style(self) -> str:
+        """Get close button stylesheet matching Windows 11."""
+        return f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {self.text};
+                border: none;
+                border-radius: 0px;
+                font-size: 16px;
+                font-weight: normal;
+            }}
+            QPushButton:hover {{
+                background-color: #e81123;
+                color: white;
+            }}
+            QPushButton:pressed {{
+                background-color: #c42b1c;
+                color: white;
+            }}
+        """
+
     def get_card_style(self) -> str:
         """Get card widget stylesheet."""
         return f"""
