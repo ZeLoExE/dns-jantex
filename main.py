@@ -5,6 +5,25 @@ DNS Jantex - A modern Windows DNS management application.
 import sys
 import os
 import ctypes
+import traceback
+
+
+def _setup_crash_log():
+    """Install a global exception handler that writes tracebacks to a log file."""
+    log_dir = _app_dir()
+    log_path = os.path.join(log_dir, "crash.log")
+
+    def _excepthook(exc_type, exc_value, exc_tb):
+        tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"--- crash ---\n{tb}\n")
+        except Exception:
+            pass
+        # Also print to stderr so it's visible if run from terminal
+        print(tb, file=sys.stderr)
+
+    sys.excepthook = _excepthook
 
 
 def _app_dir() -> str:
@@ -47,6 +66,8 @@ def request_admin():
 
 def main():
     """Main entry point for the DNS Changer application."""
+    _setup_crash_log()
+
     # Check for admin privileges
     if not is_admin():
         request_admin()

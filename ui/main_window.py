@@ -204,6 +204,8 @@ class UpdateCheckWorker(QThread):
             info = checker.check_for_update()
             self.update_available.emit(info)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.error.emit(str(e))
 
 
@@ -388,6 +390,9 @@ class MainWindow(QMainWindow):
         self._dns_applied_at = None
         self._dns_success_count = 0
         self._dns_fail_count = 0
+
+        # Update check state
+        self._update_checking = False
 
         # Set up UI
         self._setup_ui()
@@ -847,18 +852,36 @@ class MainWindow(QMainWindow):
 
     def _check_for_updates(self, silent: bool = False):
         """Check GitHub for a newer version. silent=True suppresses 'up to date' messages."""
+        # Prevent concurrent checks
+        if hasattr(self, '_update_checking') and self._update_checking:
+            return
+
         self._update_silent = silent
+        self._update_checking = True
+        self.update_btn.setEnabled(False)
+        self.update_btn.setToolTip("Checking...")
+
         self._update_check_worker = UpdateCheckWorker()
         self._update_check_worker.update_available.connect(self._on_update_check_result)
         self._update_check_worker.error.connect(self._on_update_check_error)
+        self._update_check_worker.finished.connect(self._on_update_check_done)
         self._update_check_worker.start()
+
+    def _on_update_check_done(self):
+        """Re-enable the update button after check completes."""
+        self._update_checking = False
+        self.update_btn.setEnabled(True)
+        self.update_btn.setToolTip("Check for Updates")
 
     def _on_update_check_result(self, info):
         """Handle the result of an update check."""
         if info is None:
             if not self._update_silent:
-                self.status_label.setText("You are up to date.")
-                QTimer.singleShot(3000, lambda: self.status_label.setText(""))
+                dialog = SuccessDialog(
+                    "No Updates", "You're already using the latest version.",
+                    self.style_sheet, "success", self
+                )
+                dialog.exec()
             return
 
         dialog = UpdateDialog(info, self.style_sheet, parent=self)
@@ -867,9 +890,15 @@ class MainWindow(QMainWindow):
 
     def _on_update_check_error(self, error_msg):
         """Handle an update check failure."""
+        import traceback
+        traceback.print_exc()
         if not self._update_silent:
-            self.status_label.setText("Update check failed.")
-            QTimer.singleShot(3000, lambda: self.status_label.setText(""))
+            dialog = SuccessDialog(
+                "Update Check Failed",
+                f"Could not check for updates.\n{error_msg}",
+                self.style_sheet, "error", self
+            )
+            dialog.exec()
 
     def _start_update_download(self, info: UpdateInfo):
         """Download the installer in background, then prompt to launch updater."""
