@@ -760,6 +760,15 @@ class MainWindow(QMainWindow):
         self.reset_btn.setEnabled(enabled)
         self.flush_btn.setEnabled(enabled)
 
+    def _center_dialog(self, dialog):
+        """Center a frameless dialog on the parent window."""
+        parent = dialog.parentWidget()
+        if parent:
+            dialog.adjustSize()
+            px = parent.x() + (parent.width() - dialog.width()) // 2
+            py = parent.y() + (parent.height() - dialog.height()) // 2
+            dialog.move(px, py)
+
     def _show_success(self, message: str):
         """Show success notification."""
         msg = QMessageBox(self)
@@ -768,6 +777,7 @@ class MainWindow(QMainWindow):
         msg.setWindowTitle(self.t("success"))
         msg.setText(message)
         msg.setStyleSheet(self.style_sheet.get_dialog_style())
+        self._center_dialog(msg)
         msg.exec()
 
     def _play_success_sound(self):
@@ -818,6 +828,7 @@ class MainWindow(QMainWindow):
         msg.setWindowTitle(self.t("error"))
         msg.setText(message)
         msg.setStyleSheet(self.style_sheet.get_dialog_style())
+        self._center_dialog(msg)
         msg.exec()
 
     def _show_warning(self, message: str):
@@ -828,6 +839,7 @@ class MainWindow(QMainWindow):
         msg.setWindowTitle(self.t("warning"))
         msg.setText(message)
         msg.setStyleSheet(self.style_sheet.get_dialog_style())
+        self._center_dialog(msg)
         msg.exec()
 
     def closeEvent(self, event):
