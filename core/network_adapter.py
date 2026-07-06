@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
-import subprocess
 import re
+from .powershell import PowerShellExecutor
 
 
 @dataclass
@@ -23,18 +23,6 @@ EXCLUDED_KEYWORDS = [
 ]
 
 
-def _run_cmd(cmd: str, timeout: int = 20) -> str:
-    """Run a command and return stdout."""
-    try:
-        r = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True,
-            timeout=timeout, creationflags=subprocess.CREATE_NO_WINDOW
-        )
-        return r.stdout
-    except Exception:
-        return ""
-
-
 def _is_excluded(name: str) -> bool:
     """Check if adapter should be excluded."""
     lower = name.lower()
@@ -47,132 +35,90 @@ class NetworkAdapterDetector:
     @staticmethod
     def get_active_adapter() -> Optional[AdapterInfo]:
         """Get the active network adapter with a real IP."""
-        return NetworkAdapterDetector._detect_via_ipconfig()
-
-    @staticmethod
-    def _detect_via_ipconfig() -> Optional[AdapterInfo]:
-        """Detect adapter using ipconfig - most reliable method."""
-        output = _run_cmd("ipconfig /all")
-        if not output:
-            return None
-
-        adapters = []
-        current_name = None
-        current_ip = None
-        current_dns = []
-        skip = False
-
-        for line in output.split("\n"):
-            stripped = line.strip()
-
-            # Adapter header: "Ethernet adapter Wi-Fi:" or "Wireless LAN adapter Wi-Fi:"
-            if stripped.endswith(":") and ("adapter" in stripped.lower() or "ethernet" in stripped.lower() or "wireless" in stripped.lower()):
-                # Save previous adapter if it has a valid IP
-                if current_name and current_ip and not current_ip.startswith("169.254"):
-                    adapters.append(AdapterInfo(
-                        name=current_name, status="Up",
-                        ip_address=current_ip, dns_servers=current_dns, is_active=True
-                    ))
-
-                # Check if this is a virtual adapter
-                if _is_excluded(stripped):
-                    skip = True
-                else:
-                    skip = False
-                    current_name = stripped.rstrip(":")
-                    current_ip = None
-                    current_dns = []
-                continue
-
-            if skip:
-                continue
-
-            # IPv4 address
-            if current_name and "IPv4 Address" in stripped:
-                match = re.search(r'[:\s](\d+\.\d+\.\d+\.\d+)', stripped)
-                if match:
-                    ip = match.group(1)
-                    if not ip.startswith("169.254"):
-                        current_ip = ip
-
-            # DNS servers
-            if current_name and "DNS Servers" in stripped:
-                match = re.search(r'[:\s](\d+\.\d+\.\d+\.\d+)', stripped)
-                if match:
-                    current_dns.append(match.group(1))
-
-            # Continuation of DNS servers (indented IP on next line)
-            if current_name and current_dns and re.match(r'^\s+\d+\.\d+\.\d+\.\d+', stripped):
-                match = re.match(r'^\s+(\d+\.\d+\.\d+\.\d+)', stripped)
-                if match:
-                    current_dns.append(match.group(1))
-
-        # Don't forget the last adapter
-        if current_name and current_ip and not current_ip.startswith("169.254"):
-            adapters.append(AdapterInfo(
-                name=current_name, status="Up",
-                ip_address=current_ip, dns_servers=current_dns, is_active=True
-            ))
-
-        if not adapters:
+        adapters = NetworkAdapterDetector.get_all_adapters()
+        
+        # Filter for active adapters with a valid IP (not APIPA)
+        active_adapters = [
+            a for a in adapters 
+            if a.is_active and a.ip_address and not a.ip_address.startswith("169.254")
+        ]
+        
+        if not active_adapters:
             return None
 
         # Prefer Wi-Fi or Ethernet
-        best = None
-        for adapter in adapters:
+        for adapter in active_adapters:
             name_lower = adapter.name.lower()
             if "wi-fi" in name_lower or "wifi" in name_lower:
-                best = adapter
-                break
-        if not best:
-            for adapter in adapters:
-                name_lower = adapter.name.lower()
-                if "ethernet" in name_lower:
-                    best = adapter
-                    break
-        if not best:
-            best = adapters[0]
+                return adapter
+        for adapter in active_adapters:
+            name_lower = adapter.name.lower()
+            if "ethernet" in name_lower:
+                return adapter
 
-        # Always show the DNS servers that are actually in use (static or DHCP-assigned)
-        return best
-
-    @staticmethod
-    def _check_dns_static(adapter_name: str) -> bool:
-        """Check if DNS is manually configured (static) vs DHCP."""
-        # ipconfig gives names like "Wireless LAN adapter Wi-Fi"
-        # netsh expects just "Wi-Fi" — extract the part after "adapter "
-        netsh_name = adapter_name
-        if "adapter " in adapter_name.lower():
-            idx = adapter_name.lower().index("adapter ") + len("adapter ")
-            netsh_name = adapter_name[idx:]
-
-        # Use netsh to check DNS configuration type
-        output = _run_cmd(f'netsh interface ip show dnsservers name="{netsh_name}"')
-        if not output:
-            return False
-
-        # If it says "DNS servers configured through DHCP" or contains "DHCP", it's automatic
-        lower = output.lower()
-        if "dhcp" in lower and "static" not in lower:
-            return False
-        if "obtain dns" in lower:
-            return False
-
-        # Check for actual IP addresses (static DNS)
-        ips = re.findall(r'\d+\.\d+\.\d+\.\d+', output)
-        return len(ips) > 0
+        return active_adapters[0]
 
     @staticmethod
     def get_all_adapters() -> list[AdapterInfo]:
         """Get all network adapters."""
-        output = _run_cmd("netsh interface show interface")
+        ps_cmd = (
+            '$results = Get-NetAdapter | ForEach-Object { '
+            '  $adapter = $_; '
+            '  $ipAddress = $null; '
+            '  $dnsServers = @(); '
+            '  if ($adapter.Status -eq "Up") { '
+            '    $ipInfo = Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1; '
+            '    if ($ipInfo) { $ipAddress = $ipInfo.IPAddress }; '
+            '    $dnsInfo = Get-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue; '
+            '    if ($dnsInfo) { $dnsServers = $dnsInfo.ServerAddresses } '
+            '  } '
+            '  [PSCustomObject]@{ '
+            '    Name = $adapter.Name; '
+            '    Status = $adapter.Status; '
+            '    IPAddress = $ipAddress; '
+            '    DNSServers = $dnsServers; '
+            '    IsActive = ($adapter.Status -eq "Up") '
+            '  } '
+            '}; '
+            '$results | ConvertTo-Json'
+        )
+        
+        success, data = PowerShellExecutor.execute_json(ps_cmd)
+        if not success or not data:
+            return []
+
+        if isinstance(data, dict):
+            data = [data]
+
         adapters = []
-        for line in output.split("\n"):
-            parts = line.split()
-            if len(parts) >= 4 and "Connected" in line:
-                name = " ".join(parts[3:])
-                adapters.append(AdapterInfo(name=name, status="Up", is_active=True))
-            elif len(parts) >= 4 and "Disconnected" in line:
-                name = " ".join(parts[3:])
-                adapters.append(AdapterInfo(name=name, status="Down", is_active=False))
+        for item in data:
+            name = item.get("Name", "")
+            if _is_excluded(name):
+                continue
+                
+            adapters.append(AdapterInfo(
+                name=name,
+                status=item.get("Status", "Unknown"),
+                ip_address=item.get("IPAddress"),
+                dns_servers=item.get("DNSServers", []),
+                is_active=item.get("IsActive", False)
+            ))
         return adapters
+
+    @staticmethod
+    def _check_dns_static(adapter_name: str) -> bool:
+        """Check if DNS is manually configured (static) vs DHCP."""
+        ps_cmd = (
+            f'$adapter = Get-NetAdapter | Where-Object {{ $_.Name -eq "{adapter_name}" }}; '
+            'if ($adapter) { '
+            '  $dns = Get-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue; '
+            '  if ($dns) { $dns.PrefixOrigin } else { "Unknown" } '
+            '} else { "NotFound" }'
+        )
+        
+        success, output = PowerShellExecutor.execute(ps_cmd)
+        if not success or not output:
+            return False
+            
+        origin = output.strip().lower()
+        return "manual" in origin

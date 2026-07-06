@@ -203,18 +203,18 @@ class MainWindow(QMainWindow):
 
         # Main layout
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(20, 12, 20, 12)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(24, 14, 24, 14)
+        main_layout.setSpacing(14)
 
         # Header
         header_layout = QHBoxLayout()
         header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.setSpacing(12)
+        header_layout.setSpacing(14)
 
         # Title
         self.title = QLabel(self.t("app_title"))
         self.title.setStyleSheet(self.style_sheet.get_title_style())
-        self.title.setFont(QFont("Segoe UI", 20, QFont.Weight.Bold))
+        self.title.setFont(QFont("Segoe UI", 22, QFont.Weight.Bold))
         header_layout.addWidget(self.title)
 
         header_layout.addStretch()
@@ -222,16 +222,16 @@ class MainWindow(QMainWindow):
         # Auto-Flush DNS toggle
         self.auto_flush_check = QCheckBox(" Auto-Flush DNS")
         self.auto_flush_check.setChecked(self.settings.get("auto_flush_dns", False))
-        self.auto_flush_check.setFixedHeight(38)
+        self.auto_flush_check.setFixedHeight(40)
         self.auto_flush_check.setStyleSheet(f"""
             QCheckBox {{
                 color: {self.style_sheet.text};
-                font-size: 12px;
-                spacing: 6px;
+                font-size: 13px;
+                spacing: 8px;
             }}
             QCheckBox::indicator {{
-                width: 16px; height: 16px;
-                border-radius: 3px;
+                width: 18px; height: 18px;
+                border-radius: 4px;
                 border: 2px solid {self.style_sheet.border};
                 background: transparent;
                 margin-top: 1px;
@@ -250,7 +250,7 @@ class MainWindow(QMainWindow):
 
         # Theme toggle button with icon
         self.theme_btn = QPushButton()
-        self.theme_btn.setFixedSize(38, 38)
+        self.theme_btn.setFixedSize(40, 40)
         self.theme_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
         self.theme_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.theme_btn.clicked.connect(self._toggle_theme)
@@ -259,7 +259,7 @@ class MainWindow(QMainWindow):
 
         # Language switch button with icon
         self.lang_btn = QPushButton()
-        self.lang_btn.setFixedSize(38, 38)
+        self.lang_btn.setFixedSize(40, 40)
         self.lang_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
         self.lang_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.lang_btn.setToolTip("Switch Language (EN/FA)")
@@ -271,7 +271,7 @@ class MainWindow(QMainWindow):
 
         # Network info + Custom DNS cards side by side (compact, fixed height)
         top_cards_layout = QHBoxLayout()
-        top_cards_layout.setSpacing(8)
+        top_cards_layout.setSpacing(14)
 
         self.network_card = NetworkInfoCard(self.style_sheet)
         self.network_card.speed_test_clicked.connect(self._on_ping_clicked)
@@ -296,7 +296,7 @@ class MainWindow(QMainWindow):
 
         # Action buttons
         buttons_layout = QHBoxLayout()
-        buttons_layout.setSpacing(12)
+        buttons_layout.setSpacing(16)
 
         # Apply button
         self.apply_btn = ActionButton(self.t("apply"), self.style_sheet, primary=True)
@@ -592,12 +592,12 @@ class MainWindow(QMainWindow):
         self.auto_flush_check.setStyleSheet(f"""
             QCheckBox {{
                 color: {ss.text};
-                font-size: 12px;
-                spacing: 6px;
+                font-size: 13px;
+                spacing: 8px;
             }}
             QCheckBox::indicator {{
-                width: 16px; height: 16px;
-                border-radius: 3px;
+                width: 18px; height: 18px;
+                border-radius: 4px;
                 border: 2px solid {ss.border};
                 background: transparent;
                 margin-top: 1px;

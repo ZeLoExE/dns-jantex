@@ -63,17 +63,8 @@ class ProviderRow(QFrame):
         super().mousePressEvent(event)
 
     def _setup_ui(self):
-        self.setFixedHeight(56)
-        self.setStyleSheet(f"""
-            QFrame {{
-                background-color: {self.ss.hover};
-                border-radius: 6px;
-                border: 1px solid {self.ss.border};
-            }}
-            QFrame:hover {{
-                border-color: {self.ss.accent};
-            }}
-        """)
+        self.setFixedHeight(58)
+        self.setStyleSheet(self.ss.get_provider_row_style())
 
         self._hbox = QHBoxLayout(self)
         self._hbox.setContentsMargins(16, 12, 12, 12)
@@ -117,8 +108,8 @@ class ProviderRow(QFrame):
         self.name_label.setFixedWidth(160)
         self.name_label.setStyleSheet(f"""
             color: {self.ss.text};
-            font-size: 15px;
-            font-weight: bold;
+            font-size: 14px;
+            font-weight: 600;
             background: transparent;
             border: none;
         """)
@@ -185,8 +176,8 @@ class ProviderRow(QFrame):
         self.latency_label.setFixedWidth(70)
         self.latency_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.latency_label.setStyleSheet(f"""
-            color: {self.ss.text_secondary};
-            font-size: 13px;
+            color: {self.ss.text_tertiary};
+            font-size: 12px;
             font-weight: bold;
             background: transparent;
             border: none;
@@ -233,9 +224,15 @@ class ProviderRow(QFrame):
     def set_latency(self, ms: Optional[float]):
         if ms is not None:
             self.latency_label.setText(f"{ms:.0f} ms")
+            if ms < 50:
+                color = self.ss.success
+            elif ms < 100:
+                color = self.ss.warning
+            else:
+                color = self.ss.error
             self.latency_label.setStyleSheet(f"""
-                color: {self.ss.accent};
-                font-size: 11px;
+                color: {color};
+                font-size: 12px;
                 font-weight: bold;
                 background: transparent;
                 border: none;
@@ -244,7 +241,7 @@ class ProviderRow(QFrame):
             self.latency_label.setText("Timeout")
             self.latency_label.setStyleSheet(f"""
                 color: {self.ss.error};
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: bold;
                 background: transparent;
                 border: none;
@@ -252,20 +249,11 @@ class ProviderRow(QFrame):
 
     def refresh_theme(self, ss: StyleSheet):
         self.ss = ss
-        self.setStyleSheet(f"""
-            QFrame {{
-                background-color: {ss.hover};
-                border-radius: 6px;
-                border: 1px solid {ss.border};
-            }}
-            QFrame:hover {{
-                border-color: {ss.accent};
-            }}
-        """)
+        self.setStyleSheet(ss.get_provider_row_style())
         self.radio.setStyleSheet(f"""
             QRadioButton::indicator {{
-                width: 16px; height: 16px;
-                border-radius: 8px;
+                width: 18px; height: 18px;
+                border-radius: 9px;
                 border: 2px solid {ss.border};
                 background: transparent;
             }}
@@ -277,11 +265,11 @@ class ProviderRow(QFrame):
                 border-color: {ss.accent};
             }}
         """)
-        self.name_label.setStyleSheet(f"color: {ss.text}; font-size: 15px; font-weight: bold; background: transparent; border: none;")
-        self.primary_label.setStyleSheet(f"color: {ss.text}; font-family: Consolas, monospace; font-size: 14px; background: transparent; border: none;")
-        self.secondary_label.setStyleSheet(f"color: {ss.text}; font-family: Consolas, monospace; font-size: 14px; background: transparent; border: none;")
-        self.copy_btn.setStyleSheet(f"QPushButton {{ background-color: transparent; color: {ss.text_secondary}; border: 1px solid {ss.border}; border-radius: 4px; font-size: 14px; }} QPushButton:hover {{ background-color: {ss.accent}; color: white; border-color: {ss.accent}; }}")
-        self.latency_label.setStyleSheet(f"color: {ss.text_secondary}; font-size: 13px; font-weight: bold; background: transparent; border: none;")
+        self.name_label.setStyleSheet(f"color: {ss.text}; font-size: 14px; font-weight: 600; background: transparent; border: none;")
+        self.primary_label.setStyleSheet(f"color: {ss.text}; font-family: Consolas, monospace; font-size: 13px; background: transparent; border: none;")
+        self.secondary_label.setStyleSheet(f"color: {ss.text}; font-family: Consolas, monospace; font-size: 13px; background: transparent; border: none;")
+        self.copy_btn.setStyleSheet(f"QPushButton {{ background-color: transparent; color: {ss.text_secondary}; border: 1px solid {ss.border}; border-radius: 5px; font-size: 13px; }} QPushButton:hover {{ background-color: {ss.accent}; color: white; border-color: {ss.accent}; }}")
+        self.latency_label.setStyleSheet(f"color: {ss.text_tertiary}; font-size: 12px; font-weight: bold; background: transparent; border: none;")
         self._update_star_style()
 
     def set_direction(self, is_rtl: bool):
@@ -306,7 +294,7 @@ class CustomDNSRow(QFrame):
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {self.ss.hover};
-                border-radius: 6px;
+                border-radius: 8px;
                 border: 1px solid {self.ss.border};
             }}
         """)
@@ -401,7 +389,7 @@ class DNSCard(QFrame):
             QFrame {{
                 background-color: {self.ss.card};
                 border: 1px solid {self.ss.border};
-                border-radius: 12px;
+                border-radius: 16px;
             }}
         """)
 
@@ -411,7 +399,7 @@ class DNSCard(QFrame):
 
         # Title (collapsible on scroll)
         self.title_label = QLabel("DNS Settings")
-        self.title_label.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
+        self.title_label.setStyleSheet(f"color: {self.ss.text}; font-size: 17px; font-weight: bold; background: transparent; border: none;")
         self._title_container = QWidget()
         title_container_layout = QVBoxLayout(self._title_container)
         title_container_layout.setContentsMargins(0, 0, 0, 0)
@@ -436,9 +424,10 @@ class DNSCard(QFrame):
                 background-color: transparent;
                 color: {self.ss.accent};
                 border: 1px solid {self.ss.border};
-                border-radius: 6px;
-                padding: 4px 12px;
+                border-radius: 7px;
+                padding: 5px 14px;
                 font-size: 12px;
+                font-weight: 500;
             }}
             QPushButton:hover {{
                 background-color: {self.ss.accent};
@@ -460,8 +449,8 @@ class DNSCard(QFrame):
                 background-color: transparent;
                 color: {self.ss.text_secondary};
                 border: 1px solid {self.ss.border};
-                border-radius: 6px;
-                padding: 4px 12px;
+                border-radius: 7px;
+                padding: 5px 14px;
                 font-size: 12px;
             }}
             QPushButton:hover {{
@@ -485,8 +474,8 @@ class DNSCard(QFrame):
                 background-color: transparent;
                 color: {self.ss.accent};
                 border: 1px solid {self.ss.accent};
-                border-radius: 6px;
-                padding: 4px 12px;
+                border-radius: 7px;
+                padding: 5px 14px;
                 font-size: 12px;
                 font-weight: bold;
             }}
@@ -530,18 +519,18 @@ class DNSCard(QFrame):
         # Search box (right side, expands)
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search DNS providers...")
-        self.search_input.setFixedHeight(28)
+        self.search_input.setFixedHeight(30)
         self.search_input.setMinimumWidth(160)
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
-                background-color: {self.ss.card};
+                background-color: {self.ss.input_bg};
                 color: {self.ss.text};
                 border: 1px solid {self.ss.border};
-                border-radius: 6px;
+                border-radius: 8px;
                 padding: 2px 10px;
                 font-size: 12px;
             }}
-            QLineEdit::placeholder {{ color: #888888; }}
+            QLineEdit::placeholder {{ color: {self.ss.text_tertiary}; }}
             QLineEdit:focus {{ border-color: {self.ss.accent}; }}
         """)
         self.search_input.textChanged.connect(self._on_search)
@@ -620,11 +609,11 @@ class DNSCard(QFrame):
             QScrollArea {{ border: none; background: transparent; }}
             QScrollBar:vertical {{
                 background: transparent;
-                width: 8px;
+                width: 6px;
             }}
             QScrollBar::handle:vertical {{
                 background: {self.ss.border};
-                border-radius: 4px;
+                border-radius: 3px;
                 min-height: 30px;
             }}
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
@@ -794,34 +783,7 @@ class DNSCard(QFrame):
             self.sort_btn.setText(" Sort")
 
     def _tag_btn_style(self, active: bool) -> str:
-        if active:
-            return f"""
-                QPushButton {{
-                    background-color: {self.ss.accent};
-                    color: white;
-                    border: 2px solid {self.ss.accent};
-                    border-radius: 6px;
-                    padding: 6px 14px;
-                    font-size: 11px;
-                    font-weight: bold;
-                }}
-            """
-        return f"""
-            QPushButton {{
-                background-color: transparent;
-                color: {self.ss.text_secondary};
-                border: 2px solid {self.ss.border};
-                border-radius: 6px;
-                padding: 6px 14px;
-                font-size: 11px;
-                font-weight: normal;
-            }}
-            QPushButton:hover {{
-                background-color: {self.ss.hover};
-                color: {self.ss.text};
-                border: 2px solid {self.ss.accent};
-            }}
-        """
+        return self.ss.get_tag_btn_style(active)
 
     def _toggle_tag_filter(self, tag: str):
         """Toggle a tag filter. Clicking the same tag again disables it."""
@@ -880,7 +842,7 @@ class DNSCard(QFrame):
 
     def refresh_theme(self, ss: StyleSheet):
         self.ss = ss
-        self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 12px; }}")
+        self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 16px; }}")
 
         # Update manage button
         self.manage_btn.setStyleSheet(f"""
@@ -888,9 +850,10 @@ class DNSCard(QFrame):
                 background-color: transparent;
                 color: {ss.accent};
                 border: 1px solid {ss.border};
-                border-radius: 6px;
-                padding: 4px 12px;
+                border-radius: 7px;
+                padding: 5px 14px;
                 font-size: 12px;
+                font-weight: 500;
             }}
             QPushButton:hover {{
                 background-color: {ss.accent};
@@ -905,8 +868,8 @@ class DNSCard(QFrame):
                 background-color: transparent;
                 color: {ss.text_secondary};
                 border: 1px solid {ss.border};
-                border-radius: 6px;
-                padding: 4px 12px;
+                border-radius: 7px;
+                padding: 5px 14px;
                 font-size: 12px;
             }}
             QPushButton:hover {{
@@ -923,8 +886,8 @@ class DNSCard(QFrame):
                 background-color: transparent;
                 color: {ss.accent};
                 border: 1px solid {ss.accent};
-                border-radius: 6px;
-                padding: 4px 12px;
+                border-radius: 7px;
+                padding: 5px 14px;
                 font-size: 12px;
                 font-weight: bold;
             }}
@@ -937,15 +900,15 @@ class DNSCard(QFrame):
         # Update search input
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
-                background-color: {ss.card};
+                background-color: {ss.input_bg};
                 color: {ss.text};
                 border: 1px solid {ss.border};
-                border-radius: 6px;
-                padding: 4px 12px;
+                border-radius: 8px;
+                padding: 2px 10px;
                 font-size: 12px;
             }}
             QLineEdit::placeholder {{
-                color: #888888;
+                color: {ss.text_tertiary};
             }}
             QLineEdit:focus {{
                 border-color: {ss.accent};
@@ -953,7 +916,7 @@ class DNSCard(QFrame):
         """)
 
         # Update title and header labels
-        self.title_label.setStyleSheet(f"color: {ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
+        self.title_label.setStyleSheet(f"color: {ss.text}; font-size: 17px; font-weight: bold; background: transparent; border: none;")
         for lbl in self.findChildren(QLabel):
             txt = lbl.text()
             if txt in ["Provider", "Primary DNS", "Secondary DNS", "Copy", "Latency", ""]:
@@ -1143,7 +1106,7 @@ class MiniLineChart(QWidget):
 def _sub_card(ss):
     """Create a small sub-card frame."""
     f = QFrame()
-    f.setStyleSheet(f"QFrame {{ background-color: {ss.hover}; border: 1px solid {ss.border}; border-radius: 6px; }}")
+    f.setStyleSheet(f"QFrame {{ background-color: {ss.hover}; border: 1px solid {ss.border}; border-radius: 10px; }}")
     return f
 
 
@@ -1164,7 +1127,7 @@ class NetworkInfoCard(QFrame):
         self.destroyed.connect(self._stop_bandwidth_monitor)
 
     def _setup_ui(self):
-        self.setStyleSheet(f"QFrame {{ background-color: {self.ss.card}; border: 1px solid {self.ss.border}; border-radius: 12px; }}")
+        self.setStyleSheet(f"QFrame {{ background-color: {self.ss.card}; border: 1px solid {self.ss.border}; border-radius: 16px; }}")
 
         v = QVBoxLayout(self)
         v.setContentsMargins(8, 8, 8, 4)
@@ -1397,13 +1360,13 @@ class NetworkInfoCard(QFrame):
 
         # Test Speed button
         self.speed_btn = QPushButton("Test Speed && Stability")
-        self.speed_btn.setFixedHeight(30)
+        self.speed_btn.setFixedHeight(32)
         self.speed_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.ss.accent};
                 color: white;
                 border: none;
-                border-radius: 6px;
+                border-radius: 8px;
                 font-size: 12px;
                 font-weight: bold;
             }}
@@ -1487,11 +1450,11 @@ class NetworkInfoCard(QFrame):
         self._last_change.setText(f"Last Change: {text}")
 
     def _sub_card_style(self, ss):
-        return f"QFrame {{ background-color: {ss.hover}; border: 1px solid {ss.border}; border-radius: 6px; }}"
+        return f"QFrame {{ background-color: {ss.hover}; border: 1px solid {ss.border}; border-radius: 10px; }}"
 
     def refresh_theme(self, ss: StyleSheet):
         self.ss = ss
-        self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 12px; }}")
+        self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 16px; }}")
 
         # Update all sub-card backgrounds
         sub_card_style = self._sub_card_style(ss)
@@ -1559,24 +1522,24 @@ class CustomDNSCard(QFrame):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setStyleSheet(f"QFrame {{ background-color: {self.ss.card}; border: 1px solid {self.ss.border}; border-radius: 12px; }}")
-        self.setMinimumHeight(70)
+        self.setStyleSheet(f"QFrame {{ background-color: {self.ss.card}; border: 1px solid {self.ss.border}; border-radius: 16px; }}")
+        self.setMinimumHeight(80)
 
         v = QVBoxLayout(self)
-        v.setContentsMargins(10, 8, 10, 8)
-        v.setSpacing(6)
+        v.setContentsMargins(14, 12, 14, 12)
+        v.setSpacing(8)
 
         # Title row with save preset button
         title_row = QHBoxLayout()
         title = QLabel("Custom DNS")
-        title.setStyleSheet(f"color: {self.ss.text}; font-size: 14px; font-weight: bold; background: transparent; border: none;")
+        title.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
         title_row.addWidget(title)
         title_row.addStretch()
 
         self.save_preset_btn = QPushButton()
         self.save_preset_btn.setIcon(_load_icon("manage", self.ss.text_secondary))
-        self.save_preset_btn.setIconSize(QSize(12, 12))
-        self.save_preset_btn.setFixedSize(24, 24)
+        self.save_preset_btn.setIconSize(QSize(14, 14))
+        self.save_preset_btn.setFixedSize(28, 28)
         self.save_preset_btn.setToolTip("Save these DNS addresses for quick access later")
         self.save_preset_btn.setStyleSheet(f"""
             QPushButton {{
@@ -1597,16 +1560,16 @@ class CustomDNSCard(QFrame):
         v.addLayout(title_row)
 
         inputs_row = QHBoxLayout()
-        inputs_row.setSpacing(8)
+        inputs_row.setSpacing(12)
 
         # Primary DNS input
         pri_col = QVBoxLayout()
-        pri_col.setSpacing(2)
+        pri_col.setSpacing(4)
         pri_lbl = QLabel("Primary DNS")
-        pri_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        pri_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 12px; font-weight: 500; background: transparent; border: none;")
         self.primary_input = QLineEdit()
         self.primary_input.setPlaceholderText("e.g., 178.22.122.100")
-        self.primary_input.setFixedHeight(26)
+        self.primary_input.setFixedHeight(36)
         self._style_input(self.primary_input)
         pri_col.addWidget(pri_lbl)
         pri_col.addWidget(self.primary_input)
@@ -1614,12 +1577,12 @@ class CustomDNSCard(QFrame):
 
         # Secondary DNS input
         sec_col = QVBoxLayout()
-        sec_col.setSpacing(2)
+        sec_col.setSpacing(4)
         sec_lbl = QLabel("Secondary DNS")
-        sec_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+        sec_lbl.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 12px; font-weight: 500; background: transparent; border: none;")
         self.secondary_input = QLineEdit()
         self.secondary_input.setPlaceholderText("e.g., 185.51.200.2")
-        self.secondary_input.setFixedHeight(26)
+        self.secondary_input.setFixedHeight(36)
         self._style_input(self.secondary_input)
         sec_col.addWidget(sec_lbl)
         sec_col.addWidget(self.secondary_input)
@@ -1630,18 +1593,18 @@ class CustomDNSCard(QFrame):
         # Full-width Apply Custom button
         self.apply_custom_btn = QPushButton()
         self.apply_custom_btn.setIcon(_load_icon("apply", self.ss.accent))
-        self.apply_custom_btn.setIconSize(QSize(14, 14))
+        self.apply_custom_btn.setIconSize(QSize(16, 16))
         self.apply_custom_btn.setText(" Apply Custom")
         self.apply_custom_btn.setToolTip("Override current network adapter with the manual DNS inputs above")
-        self.apply_custom_btn.setFixedHeight(28)
+        self.apply_custom_btn.setFixedHeight(38)
         self.apply_custom_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.ss.accent};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 4px 14px;
-                font-size: 11px;
+                border-radius: 10px;
+                padding: 6px 16px;
+                font-size: 13px;
                 font-weight: bold;
             }}
             QPushButton:hover {{ background-color: {self.ss.accent_hover}; }}
@@ -1653,15 +1616,15 @@ class CustomDNSCard(QFrame):
     def _style_input(self, widget):
         widget.setStyleSheet(f"""
             QLineEdit {{
-                background-color: {self.ss.card};
+                background-color: {self.ss.input_bg};
                 color: {self.ss.text};
                 border: 1px solid {self.ss.border};
-                border-radius: 6px;
-                padding: 4px 8px;
-                font-size: 11px;
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 13px;
             }}
             QLineEdit::placeholder {{
-                color: #888888;
+                color: {self.ss.text_tertiary};
             }}
             QLineEdit:focus {{
                 border-color: {self.ss.accent};
@@ -1682,13 +1645,13 @@ class CustomDNSCard(QFrame):
 
     def refresh_theme(self, ss: StyleSheet):
         self.ss = ss
-        self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 12px; }}")
+        self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 16px; }}")
         for lbl in self.findChildren(QLabel):
             txt = lbl.text()
             if txt == "Custom DNS":
-                lbl.setStyleSheet(f"color: {ss.text}; font-size: 14px; font-weight: bold; background: transparent; border: none;")
+                lbl.setStyleSheet(f"color: {ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
             elif txt in ["Primary DNS", "Secondary DNS"]:
-                lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 10px; background: transparent; border: none;")
+                lbl.setStyleSheet(f"color: {ss.text_secondary}; font-size: 12px; font-weight: 500; background: transparent; border: none;")
         self._style_input(self.primary_input)
         self._style_input(self.secondary_input)
         self.apply_custom_btn.setIcon(_load_icon("apply", ss.accent))
@@ -1697,9 +1660,9 @@ class CustomDNSCard(QFrame):
                 background-color: {ss.accent};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 4px 14px;
-                font-size: 11px;
+                border-radius: 10px;
+                padding: 6px 16px;
+                font-size: 13px;
                 font-weight: bold;
             }}
             QPushButton:hover {{ background-color: {ss.accent_hover}; }}
@@ -1710,7 +1673,7 @@ class CustomDNSCard(QFrame):
                 background-color: transparent;
                 color: {ss.text_secondary};
                 border: 1px solid {ss.border};
-                border-radius: 4px;
+                border-radius: 5px;
             }}
             QPushButton:hover {{
                 background-color: {ss.hover};
@@ -1736,9 +1699,9 @@ class ActionButton(QPushButton):
                     background-color: {self.ss.accent};
                     color: white;
                     border: none;
-                    border-radius: 8px;
-                    padding: 10px 20px;
-                    font-size: 13px;
+                    border-radius: 10px;
+                    padding: 12px 24px;
+                    font-size: 14px;
                     font-weight: bold;
                     min-height: 20px;
                 }}
@@ -1758,14 +1721,15 @@ class ActionButton(QPushButton):
                 QPushButton {{
                     background-color: transparent;
                     color: {self.ss.text};
-                    border: 1px solid {self.ss.border};
-                    border-radius: 8px;
+                    border: 2px solid {self.ss.border};
+                    border-radius: 10px;
                     padding: 10px 20px;
-                    font-size: 13px;
+                    font-size: 14px;
                     min-height: 20px;
                 }}
                 QPushButton:hover {{
                     background-color: {self.ss.hover};
+                    border-color: {self.ss.accent};
                 }}
                 QPushButton:pressed {{
                     background-color: {self.ss.border};
@@ -1776,7 +1740,7 @@ class ActionButton(QPushButton):
                 }}
             """)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setMinimumHeight(42)
+        self.setMinimumHeight(46)
         self.setMinimumWidth(120)
 
     def refresh_theme(self, style_sheet: StyleSheet):

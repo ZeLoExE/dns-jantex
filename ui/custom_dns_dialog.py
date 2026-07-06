@@ -30,11 +30,11 @@ class CustomDNSEntryWidget(QFrame):
         self.setStyleSheet(f"""
             QFrame {{
                 background-color: {self.ss.hover};
-                border-radius: 6px;
+                border-radius: 8px;
                 border: 1px solid {self.ss.border};
             }}
         """)
-        self.setFixedHeight(44)
+        self.setFixedHeight(48)
 
         h = QHBoxLayout(self)
         h.setContentsMargins(12, 6, 12, 6)
@@ -63,13 +63,13 @@ class CustomDNSEntryWidget(QFrame):
 
         # Edit button
         edit_btn = QPushButton("Edit")
-        edit_btn.setFixedSize(50, 26)
+        edit_btn.setFixedSize(55, 28)
         edit_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
                 color: {self.ss.accent};
                 border: 1px solid {self.ss.border};
-                border-radius: 4px;
+                border-radius: 5px;
                 font-size: 11px;
             }}
             QPushButton:hover {{
@@ -83,13 +83,13 @@ class CustomDNSEntryWidget(QFrame):
 
         # Delete button
         del_btn = QPushButton("Delete")
-        del_btn.setFixedSize(55, 26)
+        del_btn.setFixedSize(60, 28)
         del_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
                 color: {self.ss.error};
                 border: 1px solid {self.ss.border};
-                border-radius: 4px;
+                border-radius: 5px;
                 font-size: 11px;
             }}
             QPushButton:hover {{
@@ -128,11 +128,12 @@ class CustomDNSEditDialog(QDialog):
 
     def _setup_ui(self):
         self.setWindowTitle("Edit Custom DNS" if self.entry else "Add Custom DNS")
-        self.setFixedSize(420, 240)
+        self.setFixedSize(420, 250)
         self.setStyleSheet(f"""
             QDialog {{
-                background-color: {self.ss.card};
+                background-color: {self.ss.bg};
                 border: 1px solid {self.ss.border};
+                border-radius: 12px;
             }}
         """)
 
@@ -142,7 +143,7 @@ class CustomDNSEditDialog(QDialog):
 
         # Title
         title = QLabel("Edit Custom DNS" if self.entry else "Add Custom DNS")
-        title.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
+        title.setStyleSheet(f"color: {self.ss.text}; font-size: 18px; font-weight: bold; background: transparent; border: none;")
         v.addWidget(title)
 
         # Name
@@ -177,13 +178,13 @@ class CustomDNSEditDialog(QDialog):
         btn_row.addStretch()
 
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.setFixedSize(80, 32)
+        cancel_btn.setFixedSize(85, 34)
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
                 color: {self.ss.text};
                 border: 1px solid {self.ss.border};
-                border-radius: 6px;
+                border-radius: 7px;
                 font-size: 12px;
             }}
             QPushButton:hover {{ background-color: {self.ss.hover}; }}
@@ -193,13 +194,13 @@ class CustomDNSEditDialog(QDialog):
         btn_row.addWidget(cancel_btn)
 
         save_btn = QPushButton("Save")
-        save_btn.setFixedSize(80, 32)
+        save_btn.setFixedSize(85, 34)
         save_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.ss.accent};
                 color: white;
                 border: none;
-                border-radius: 6px;
+                border-radius: 7px;
                 font-size: 12px;
                 font-weight: bold;
             }}
@@ -279,19 +280,19 @@ class CustomDNSManagerDialog(QDialog):
         # Header
         hdr = QHBoxLayout()
         title = QLabel("Custom DNS Manager")
-        title.setStyleSheet(f"color: {self.ss.text}; font-size: 18px; font-weight: bold; background: transparent; border: none;")
+        title.setStyleSheet(f"color: {self.ss.text}; font-size: 20px; font-weight: bold; background: transparent; border: none;")
         hdr.addWidget(title)
         hdr.addStretch()
 
         add_btn = QPushButton("+ Add DNS")
-        add_btn.setFixedHeight(32)
+        add_btn.setFixedHeight(34)
         add_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.ss.accent};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 0 16px;
+                border-radius: 7px;
+                padding: 0 18px;
                 font-size: 12px;
                 font-weight: bold;
             }}
@@ -311,11 +312,11 @@ class CustomDNSManagerDialog(QDialog):
             QScrollArea {{ border: none; background: transparent; }}
             QScrollBar:vertical {{
                 background: transparent;
-                width: 8px;
+                width: 6px;
             }}
             QScrollBar::handle:vertical {{
                 background: {self.ss.border};
-                border-radius: 4px;
+                border-radius: 3px;
                 min-height: 30px;
             }}
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
@@ -334,14 +335,14 @@ class CustomDNSManagerDialog(QDialog):
 
         # Close button
         close_btn = QPushButton("Close")
-        close_btn.setFixedHeight(34)
+        close_btn.setFixedHeight(36)
         close_btn.setFixedWidth(100)
         close_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.ss.hover};
                 color: {self.ss.text};
                 border: 1px solid {self.ss.border};
-                border-radius: 6px;
+                border-radius: 7px;
                 font-size: 12px;
             }}
             QPushButton:hover {{ background-color: {self.ss.border}; }}

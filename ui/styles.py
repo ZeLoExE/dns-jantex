@@ -6,33 +6,39 @@ from PySide6.QtGui import QFont
 class Colors:
     """Color constants for the application."""
 
-    # Dark mode colors
-    DARK_BG = "#1e1e1e"
-    DARK_CARD = "#2d2d2d"
-    DARK_HOVER = "#3d3d3d"
-    DARK_BORDER = "#404040"
-    DARK_TEXT = "#ffffff"
-    DARK_TEXT_SECONDARY = "#b0b0b0"
-    DARK_TEXT_TERTIARY = "#c8c8c8"
-    DARK_ACCENT = "#f57c00"
-    DARK_ACCENT_HOVER = "#ff9800"
-    DARK_SUCCESS = "#4caf50"
-    DARK_ERROR = "#f44336"
-    DARK_WARNING = "#ff9800"
+    # Dark mode colors (Midnight theme - blue-tinted dark)
+    DARK_BG = "#0f1117"
+    DARK_SURFACE = "#181b23"
+    DARK_CARD = "#1c1f2a"
+    DARK_HOVER = "#252836"
+    DARK_BORDER = "#2a2d3a"
+    DARK_TEXT = "#e8eaed"
+    DARK_TEXT_SECONDARY = "#8b8fa3"
+    DARK_TEXT_TERTIARY = "#5c6078"
+    DARK_ACCENT = "#6366f1"
+    DARK_ACCENT_HOVER = "#818cf8"
+    DARK_ACCENT_SUBTLE = "#6366f120"
+    DARK_SUCCESS = "#22c55e"
+    DARK_ERROR = "#ef4444"
+    DARK_WARNING = "#f59e0b"
+    DARK_INPUT_BG = "#252836"
 
-    # Light mode colors
-    LIGHT_BG = "#f5f5f5"
+    # Light mode colors (Clean theme)
+    LIGHT_BG = "#f8f9fc"
+    LIGHT_SURFACE = "#ffffff"
     LIGHT_CARD = "#ffffff"
-    LIGHT_HOVER = "#e8e8e8"
-    LIGHT_BORDER = "#e0e0e0"
-    LIGHT_TEXT = "#1e1e1e"
-    LIGHT_TEXT_SECONDARY = "#666666"
-    LIGHT_TEXT_TERTIARY = "#555555"
-    LIGHT_ACCENT = "#f57c00"
-    LIGHT_ACCENT_HOVER = "#e65100"
-    LIGHT_SUCCESS = "#4caf50"
-    LIGHT_ERROR = "#f44336"
-    LIGHT_WARNING = "#ff9800"
+    LIGHT_HOVER = "#f1f3f9"
+    LIGHT_BORDER = "#e2e5ef"
+    LIGHT_TEXT = "#1e293b"
+    LIGHT_TEXT_SECONDARY = "#64748b"
+    LIGHT_TEXT_TERTIARY = "#94a3b8"
+    LIGHT_ACCENT = "#6366f1"
+    LIGHT_ACCENT_HOVER = "#4f46e5"
+    LIGHT_ACCENT_SUBTLE = "#6366f115"
+    LIGHT_SUCCESS = "#22c55e"
+    LIGHT_ERROR = "#ef4444"
+    LIGHT_WARNING = "#f59e0b"
+    LIGHT_INPUT_BG = "#f1f3f9"
 
 
 class StyleSheet:
@@ -46,6 +52,7 @@ class StyleSheet:
         """Update color palette based on theme."""
         if self.dark_mode:
             self.bg = Colors.DARK_BG
+            self.surface = Colors.DARK_SURFACE
             self.card = Colors.DARK_CARD
             self.hover = Colors.DARK_HOVER
             self.border = Colors.DARK_BORDER
@@ -54,11 +61,14 @@ class StyleSheet:
             self.text_tertiary = Colors.DARK_TEXT_TERTIARY
             self.accent = Colors.DARK_ACCENT
             self.accent_hover = Colors.DARK_ACCENT_HOVER
+            self.accent_subtle = Colors.DARK_ACCENT_SUBTLE
             self.success = Colors.DARK_SUCCESS
             self.error = Colors.DARK_ERROR
             self.warning = Colors.DARK_WARNING
+            self.input_bg = Colors.DARK_INPUT_BG
         else:
             self.bg = Colors.LIGHT_BG
+            self.surface = Colors.LIGHT_SURFACE
             self.card = Colors.LIGHT_CARD
             self.hover = Colors.LIGHT_HOVER
             self.border = Colors.LIGHT_BORDER
@@ -67,9 +77,11 @@ class StyleSheet:
             self.text_tertiary = Colors.LIGHT_TEXT_TERTIARY
             self.accent = Colors.LIGHT_ACCENT
             self.accent_hover = Colors.LIGHT_ACCENT_HOVER
+            self.accent_subtle = Colors.LIGHT_ACCENT_SUBTLE
             self.success = Colors.LIGHT_SUCCESS
             self.error = Colors.LIGHT_ERROR
             self.warning = Colors.LIGHT_WARNING
+            self.input_bg = Colors.LIGHT_INPUT_BG
 
     def get_main_window_style(self) -> str:
         """Get the main window stylesheet."""
@@ -85,8 +97,8 @@ class StyleSheet:
             QFrame {{
                 background-color: {self.card};
                 border: 1px solid {self.border};
-                border-radius: 12px;
-                padding: 16px;
+                border-radius: 16px;
+                padding: 20px;
             }}
         """
 
@@ -98,11 +110,11 @@ class StyleSheet:
                     background-color: {self.accent};
                     color: white;
                     border: none;
-                    border-radius: 8px;
-                    padding: 10px 20px;
+                    border-radius: 10px;
+                    padding: 12px 24px;
                     font-size: 14px;
                     font-weight: bold;
-                    min-height: 20px;
+                    min-height: 36px;
                 }}
                 QPushButton:hover {{
                     background-color: {self.accent_hover};
@@ -112,7 +124,7 @@ class StyleSheet:
                 }}
                 QPushButton:disabled {{
                     background-color: {self.border};
-                    color: {self.text_secondary};
+                    color: {self.text_tertiary};
                 }}
             """
         else:
@@ -120,21 +132,24 @@ class StyleSheet:
                 QPushButton {{
                     background-color: transparent;
                     color: {self.text};
-                    border: 1px solid {self.border};
-                    border-radius: 8px;
+                    border: 2px solid {self.border};
+                    border-radius: 10px;
                     padding: 10px 20px;
                     font-size: 14px;
-                    min-height: 20px;
+                    font-weight: 500;
+                    min-height: 36px;
                 }}
                 QPushButton:hover {{
                     background-color: {self.hover};
+                    border-color: {self.accent};
                 }}
                 QPushButton:pressed {{
                     background-color: {self.border};
                 }}
                 QPushButton:disabled {{
-                    background-color: {self.border};
-                    color: {self.text_secondary};
+                    background-color: {self.hover};
+                    color: {self.text_tertiary};
+                    border-color: {self.border};
                 }}
             """
 
@@ -142,15 +157,18 @@ class StyleSheet:
         """Get combo box stylesheet."""
         return f"""
             QComboBox {{
-                background-color: {self.card};
+                background-color: {self.input_bg};
                 color: {self.text};
-                border: 1px solid {self.border};
-                border-radius: 8px;
+                border: 2px solid {self.border};
+                border-radius: 10px;
                 padding: 8px 12px;
                 font-size: 14px;
-                min-height: 20px;
+                min-height: 36px;
             }}
             QComboBox:hover {{
+                border-color: {self.accent};
+            }}
+            QComboBox:focus {{
                 border-color: {self.accent};
             }}
             QComboBox::drop-down {{
@@ -161,16 +179,17 @@ class StyleSheet:
                 image: none;
                 border-left: 5px solid transparent;
                 border-right: 5px solid transparent;
-                border-top: 6px solid {self.text};
-                margin-right: 8px;
+                border-top: 6px solid {self.text_secondary};
+                margin-right: 10px;
             }}
             QComboBox QAbstractItemView {{
-                background-color: {self.card};
+                background-color: {self.surface};
                 color: {self.text};
                 border: 1px solid {self.border};
                 border-radius: 8px;
                 selection-background-color: {self.accent};
                 selection-color: white;
+                outline: none;
                 padding: 4px;
             }}
         """
@@ -179,23 +198,25 @@ class StyleSheet:
         """Get line edit stylesheet."""
         return f"""
             QLineEdit {{
-                background-color: {self.card};
+                background-color: {self.input_bg};
                 color: {self.text};
-                border: 1px solid {self.border};
-                border-radius: 8px;
-                padding: 8px 12px;
+                border: 2px solid {self.border};
+                border-radius: 10px;
+                padding: 8px 14px;
                 font-size: 14px;
-                min-height: 20px;
+                min-height: 36px;
             }}
             QLineEdit:hover {{
-                border-color: {self.accent};
+                border-color: {self.text_tertiary};
             }}
             QLineEdit:focus {{
                 border-color: {self.accent};
+                border-width: 2px;
             }}
             QLineEdit:disabled {{
                 background-color: {self.hover};
-                color: {self.text_secondary};
+                color: {self.text_tertiary};
+                border-color: {self.border};
             }}
         """
 
@@ -217,7 +238,7 @@ class StyleSheet:
         return f"""
             QLabel {{
                 color: {self.text};
-                font-size: 24px;
+                font-size: 28px;
                 font-weight: bold;
                 background: transparent;
                 border: none;
@@ -240,14 +261,14 @@ class StyleSheet:
         return f"""
             QRadioButton {{
                 color: {self.text};
-                spacing: 8px;
+                spacing: 10px;
                 background: transparent;
                 border: none;
             }}
             QRadioButton::indicator {{
-                width: 18px;
-                height: 18px;
-                border-radius: 9px;
+                width: 20px;
+                height: 20px;
+                border-radius: 10px;
                 border: 2px solid {self.border};
                 background: transparent;
             }}
@@ -264,13 +285,13 @@ class StyleSheet:
         """Get spin box stylesheet."""
         return f"""
             QSpinBox {{
-                background-color: {self.card};
+                background-color: {self.input_bg};
                 color: {self.text};
-                border: 1px solid {self.border};
-                border-radius: 8px;
+                border: 2px solid {self.border};
+                border-radius: 10px;
                 padding: 8px 12px;
                 font-size: 14px;
-                min-height: 20px;
+                min-height: 36px;
             }}
             QSpinBox:hover {{
                 border-color: {self.accent};
@@ -287,7 +308,7 @@ class StyleSheet:
                 background-color: {self.hover};
                 border: none;
                 border-radius: 4px;
-                height: 8px;
+                height: 10px;
                 text-align: center;
             }}
             QProgressBar::chunk {{
@@ -300,10 +321,10 @@ class StyleSheet:
         """Get tooltip stylesheet."""
         return f"""
             QToolTip {{
-                background-color: {self.card};
+                background-color: {self.surface};
                 color: {self.text};
                 border: 1px solid {self.border};
-                border-radius: 6px;
+                border-radius: 8px;
                 padding: 8px;
                 font-size: 12px;
             }}
@@ -318,12 +339,12 @@ class StyleSheet:
             }}
             QScrollBar:vertical {{
                 background: transparent;
-                width: 10px;
+                width: 6px;
                 margin: 0;
             }}
             QScrollBar::handle:vertical {{
                 background: {self.border};
-                border-radius: 5px;
+                border-radius: 3px;
                 min-height: 30px;
             }}
             QScrollBar::handle:vertical:hover {{
@@ -344,7 +365,7 @@ class StyleSheet:
         return f"""
             QLabel {{
                 color: {self.accent};
-                font-size: 11px;
+                font-size: 12px;
                 font-weight: bold;
                 background: transparent;
                 border: none;
@@ -358,11 +379,11 @@ class StyleSheet:
                 background-color: transparent;
                 color: {self.accent};
                 border: 1px solid {self.border};
-                border-radius: 4px;
-                padding: 2px 6px;
-                font-size: 11px;
-                min-width: 50px;
-                max-width: 60px;
+                border-radius: 6px;
+                padding: 4px 8px;
+                font-size: 12px;
+                min-width: 56px;
+                max-width: 64px;
             }}
             QPushButton:hover {{
                 background-color: {self.accent};
@@ -381,9 +402,9 @@ class StyleSheet:
                 background-color: {self.card};
                 color: {self.text};
                 border: 1px solid {self.border};
-                border-radius: 8px;
-                padding: 4px;
-                font-size: 18px;
+                border-radius: 10px;
+                padding: 6px;
+                font-size: 20px;
             }}
             QPushButton:hover {{
                 background-color: {self.hover};
@@ -391,6 +412,75 @@ class StyleSheet:
             }}
             QPushButton:pressed {{
                 background-color: {self.border};
+            }}
+        """
+
+    def get_tag_btn_style(self, active: bool = False) -> str:
+        """Get tag filter chip button stylesheet."""
+        if active:
+            return f"""
+                QPushButton {{
+                    background-color: {self.accent};
+                    color: white;
+                    border: 1px solid {self.accent};
+                    border-radius: 14px;
+                    padding: 5px 14px;
+                    font-size: 11px;
+                    font-weight: bold;
+                }}
+            """
+        return f"""
+            QPushButton {{
+                background-color: {self.hover};
+                color: {self.text_secondary};
+                border: 1px solid {self.border};
+                border-radius: 14px;
+                padding: 5px 14px;
+                font-size: 11px;
+                font-weight: normal;
+            }}
+            QPushButton:hover {{
+                background-color: {self.card};
+                color: {self.text};
+                border-color: {self.accent};
+            }}
+        """
+
+    def get_provider_row_style(self) -> str:
+        """Get provider row stylesheet."""
+        return f"""
+            QFrame {{
+                background-color: {self.hover};
+                border-radius: 8px;
+                border: 1px solid {self.border};
+            }}
+            QFrame:hover {{
+                border-color: {self.accent};
+                background-color: {self.card};
+            }}
+        """
+
+    def get_input_style(self) -> str:
+        """Get input field stylesheet with accent focus."""
+        return f"""
+            QLineEdit {{
+                background-color: {self.input_bg};
+                color: {self.text};
+                border: 1px solid {self.border};
+                border-radius: 8px;
+                padding: 6px 10px;
+                font-size: 12px;
+            }}
+            QLineEdit:focus {{
+                border-color: {self.accent};
+            }}
+        """
+
+    def get_dialog_style(self) -> str:
+        """Get dialog background stylesheet."""
+        return f"""
+            QDialog {{
+                background-color: {self.bg};
             }}
         """
 
@@ -408,7 +498,6 @@ class Fonts:
     @staticmethod
     def get_persian_font() -> QFont:
         """Get the Persian font."""
-        # Try Vazirmatn first, fall back to system fonts
         for font_name in ["Vazirmatn", "IRANSans", "Tahoma", "Arial"]:
             font = QFont(font_name, 10)
             if font.exactMatch():
