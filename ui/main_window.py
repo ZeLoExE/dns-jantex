@@ -766,7 +766,7 @@ class MainWindow(QMainWindow):
         msg.setIcon(QMessageBox.Icon.Information)
         msg.setWindowTitle(self.t("success"))
         msg.setText(message)
-        msg.setStyleSheet(self.style_sheet.get_card_style())
+        msg.setStyleSheet(self.style_sheet.get_dialog_style())
         msg.exec()
 
     def _play_success_sound(self):
@@ -815,7 +815,7 @@ class MainWindow(QMainWindow):
         msg.setIcon(QMessageBox.Icon.Critical)
         msg.setWindowTitle(self.t("error"))
         msg.setText(message)
-        msg.setStyleSheet(self.style_sheet.get_card_style())
+        msg.setStyleSheet(self.style_sheet.get_dialog_style())
         msg.exec()
 
     def _show_warning(self, message: str):
@@ -824,7 +824,7 @@ class MainWindow(QMainWindow):
         msg.setIcon(QMessageBox.Icon.Warning)
         msg.setWindowTitle(self.t("warning"))
         msg.setText(message)
-        msg.setStyleSheet(self.style_sheet.get_card_style())
+        msg.setStyleSheet(self.style_sheet.get_dialog_style())
         msg.exec()
 
     def closeEvent(self, event):

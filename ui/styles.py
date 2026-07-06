@@ -477,10 +477,29 @@ class StyleSheet:
         """
 
     def get_dialog_style(self) -> str:
-        """Get dialog background stylesheet."""
+        """Get dialog stylesheet with proper text colors."""
         return f"""
-            QDialog {{
-                background-color: {self.bg};
+            QMessageBox {{
+                background-color: {self.card};
+            }}
+            QMessageBox QLabel {{
+                color: {self.text};
+                font-size: 13px;
+                background: transparent;
+                border: none;
+            }}
+            QMessageBox QPushButton {{
+                background-color: {self.accent};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 20px;
+                font-size: 12px;
+                font-weight: bold;
+                min-width: 60px;
+            }}
+            QMessageBox QPushButton:hover {{
+                background-color: {self.accent_hover};
             }}
         """
 
