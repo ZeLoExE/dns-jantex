@@ -763,6 +763,7 @@ class MainWindow(QMainWindow):
     def _show_success(self, message: str):
         """Show success notification."""
         msg = QMessageBox(self)
+        msg.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         msg.setIcon(QMessageBox.Icon.Information)
         msg.setWindowTitle(self.t("success"))
         msg.setText(message)
@@ -812,6 +813,7 @@ class MainWindow(QMainWindow):
     def _show_error(self, message: str):
         """Show error notification."""
         msg = QMessageBox(self)
+        msg.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         msg.setIcon(QMessageBox.Icon.Critical)
         msg.setWindowTitle(self.t("error"))
         msg.setText(message)
@@ -821,6 +823,7 @@ class MainWindow(QMainWindow):
     def _show_warning(self, message: str):
         """Show warning notification."""
         msg = QMessageBox(self)
+        msg.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         msg.setIcon(QMessageBox.Icon.Warning)
         msg.setWindowTitle(self.t("warning"))
         msg.setText(message)
