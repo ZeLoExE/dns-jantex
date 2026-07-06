@@ -119,6 +119,58 @@ DNS_PROVIDERS = [
 
     # Brazilian
     DNSProvider("NIC.BR", "provider_nic_br", "200.160.0.8", "200.160.2.3", tags=[]),
+
+    # === DNS servers from DNS Jumper image ===
+
+    # OpenDNS - 2
+    DNSProvider("OpenDNS 2", "provider_opendns2", "208.67.222.220", "208.67.220.222", tags=["security"]),
+
+    # Norton
+    DNSProvider("Norton ConnectSafe", "provider_norton_connect", "199.85.126.10", "199.85.127.10", tags=["security", "family"]),
+    DNSProvider("Norton DNS", "provider_norton_dns", "198.153.192.1", "198.153.194.1", tags=["security"]),
+
+    # Level 3 variants
+    DNSProvider("Level 3 A", "provider_level3_a", "209.244.0.3", "209.244.0.4", tags=["gaming"]),
+    DNSProvider("Level 3 C", "provider_level3_c", "4.2.2.3", "4.2.2.3", tags=["gaming"]),
+    DNSProvider("Level 3 D", "provider_level3_d", "4.2.2.5", "4.2.2.6", tags=["gaming"]),
+
+    # Dyn
+    DNSProvider("Dyn", "provider_dyn", "216.146.35.35", "216.146.36.36", tags=[]),
+
+    # Comodo (non-secure)
+    DNSProvider("Comodo", "provider_comodo_dns", "156.154.70.22", "156.154.71.22", tags=[]),
+
+    # Qwest
+    DNSProvider("Qwest", "provider_qwest", "205.171.3.65", "205.171.2.65", tags=[]),
+
+    # UltraDNS
+    DNSProvider("UltraDNS", "provider_ultradns", "204.74.234.1", "204.74.101.1", tags=["security"]),
+
+    # UK ISPs
+    DNSProvider("Zen Internet", "provider_zen", "212.23.8.1", "212.23.3.1", tags=[]),
+    DNSProvider("Orange DNS", "provider_orange", "195.92.195.94", "195.92.195.95", tags=[]),
+
+    # Neustar
+    DNSProvider("Neustar 1", "provider_neustar1", "156.154.70.1", "156.154.71.1", tags=["security"]),
+    DNSProvider("Neustar 2", "provider_neustar2", "156.154.70.5", "156.154.71.5", tags=["security"]),
+
+    # DNS4EU
+    DNSProvider("DNS4EU", "provider_dns4eu", "86.54.11.100", "86.54.11.200", tags=["privacy"]),
+
+    # Sprint
+    DNSProvider("Sprint", "provider_sprint", "204.97.212.10", "204.117.214.10", tags=[]),
+    DNSProvider("Sprintlink", "provider_sprintlink", "199.2.252.10", "204.97.212.10", tags=[]),
+
+    # DNS WATCH
+    DNSProvider("DNS WATCH", "provider_dnswatch2", "84.200.69.80", "84.200.70.40", tags=["privacy"]),
+
+    # Freenom World
+    DNSProvider("Freenom World", "provider_freenom", "80.80.80.80", "80.80.81.81", tags=["privacy"]),
+
+    # FDN (French)
+    DNSProvider("FDN", "provider_fdn", "80.67.169.12", "80.67.169.40", tags=["privacy"]),
+
+    # Censurfridns (Denmark) - already exists as UncensoredDNS
 ]
 
 

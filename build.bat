@@ -11,11 +11,19 @@ if %errorlevel% neq 0 (
     pip install pyinstaller
 )
 
-REM Build the application
-echo Building standalone executable...
+REM Build the main application
+echo Building DNSChanger.exe...
 pyinstaller build.spec
 
+REM Build the updater
+echo Building Updater.exe...
+pyinstaller build_updater.spec
+
 echo.
-echo Build complete! Output in dist\DNSChanger\
+echo Build complete!
+echo   Main app:  dist\DNSChanger\
+echo   Updater:   dist\Updater\Updater.exe
+echo.
+echo Copy Updater.exe to the dist\DNSChanger\ folder or project root.
 echo.
 pause

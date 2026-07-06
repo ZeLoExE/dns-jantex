@@ -1,19 +1,14 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec file for DNS Changer
+# PyInstaller spec file for Updater.exe
 
 block_cipher = None
 
 a = Analysis(
-    ['main.py'],
+    ['updater.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        ('translations/*.json', 'translations'),
-        ('assets/*', 'assets'),
-        ('assets/icons/*', 'assets/icons'),
-        ('VERSION', '.'),
-    ],
-    hiddenimports=['ui', 'ui.main_window', 'ui.components', 'ui.styles', 'ui.custom_dns_dialog', 'ui.animations', 'core', 'core.dns_manager', 'core.network_adapter', 'core.dns_providers', 'core.custom_dns', 'core.powershell', 'psutil'],
+    datas=[],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -29,9 +24,11 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
     [],
-    exclude_binaries=True,
-    name='DNSChanger',
+    name='Updater',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -43,15 +40,4 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='assets/icon.ico',
-)
-
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='DNSChanger',
 )

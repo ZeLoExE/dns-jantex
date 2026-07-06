@@ -6,10 +6,11 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout,
     QLabel, QPushButton, QComboBox, QFrame,
-    QSystemTrayIcon, QApplication, QSplashScreen, QButtonGroup, QCheckBox
+    QSystemTrayIcon, QApplication, QSplashScreen, QButtonGroup, QCheckBox,
+    QMenu, QDialog, QProgressBar
 )
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize
-from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPainter
+from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPainter, QAction
 
 from ui.styles import StyleSheet, Fonts
 from ui.components import DNSCard, NetworkInfoCard, CustomDNSCard, ActionButton, SuccessDialog
@@ -18,6 +19,24 @@ from core.dns_manager import DNSManager
 from core.network_adapter import NetworkAdapterDetector
 from core.dns_providers import DNS_PROVIDERS
 from core.custom_dns import load_custom_dns, add_custom_dns
+from core.updater import UpdateChecker, UpdateInfo, download_file
+
+
+def _base_dir() -> Path:
+    """Return the project root — works both in dev and inside a PyInstaller bundle.
+    Used for READ-ONLY resources (icons, translations, VERSION)."""
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent.parent
+
+
+def _app_dir() -> Path:
+    """Return the directory next to the executable — for WRITABLE data (settings, config).
+    In dev mode this is the same as _base_dir()."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path(__file__).resolve().parent.parent
+
 
 # Windows DWM API constants for Windows 11 effects
 DWMWA_USE_IMMERSIVE_DARK_MODE = 20
@@ -44,7 +63,7 @@ class CustomTitleBar(QWidget):
         # App icon
         self.icon_label = QLabel()
         self.icon_label.setFixedSize(20, 20)
-        icon_path = Path(__file__).parent.parent / "assets" / "icon.png"
+        icon_path = _base_dir() / "assets" / "icon.png"
         if icon_path.exists():
             pixmap = QPixmap(str(icon_path)).scaled(
                 20, 20, Qt.AspectRatioMode.KeepAspectRatio,
@@ -75,7 +94,12 @@ class CustomTitleBar(QWidget):
         layout.addWidget(self.close_btn)
 
     def _minimize(self):
-        self.window().showMinimized()
+        # Hide to system tray instead of minimizing to taskbar
+        main = self.window()
+        if hasattr(main, '_minimize_to_tray'):
+            main._minimize_to_tray()
+        else:
+            main.showMinimized()
 
     def _close(self):
         self.window().close()
@@ -160,10 +184,172 @@ class DNSWorker(QThread):
                 success, message = DNSManager.flush_dns_cache()
             else:
                 success, message = False, "Unknown operation"
-            
+
             self.finished.emit(success, message)
         except Exception as e:
             self.finished.emit(False, str(e))
+
+
+class UpdateCheckWorker(QThread):
+    """Worker thread for checking updates in the background."""
+    update_available = Signal(object)  # UpdateInfo or None
+    error = Signal(str)
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        try:
+            checker = UpdateChecker()
+            info = checker.check_for_update()
+            self.update_available.emit(info)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+class DownloadWorker(QThread):
+    """Worker thread for downloading update files."""
+    progress = Signal(int, int)  # bytes_downloaded, total_bytes
+    finished = Signal(bool)  # success
+
+    def __init__(self, url: str, dest: Path):
+        super().__init__()
+        self.url = url
+        self.dest = dest
+
+    def run(self):
+        success = download_file(self.url, self.dest, self._on_progress)
+        self.finished.emit(success)
+
+    def _on_progress(self, downloaded, total):
+        self.progress.emit(downloaded, total)
+
+
+class UpdateDialog(QDialog):
+    """Dialog shown when an update is available."""
+
+    def __init__(self, update_info: UpdateInfo, style_sheet: StyleSheet, parent=None):
+        super().__init__(parent)
+        self.update_info = update_info
+        self.ss = style_sheet
+        self.result = False  # True if user clicks Install
+
+        self.setWindowTitle("Update Available")
+        self.setFixedSize(420, 320)
+        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
+        self.setStyleSheet(style_sheet.get_dialog_style() if hasattr(style_sheet, 'get_dialog_style') else "")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(12)
+
+        # Title
+        title = QLabel("Update Available")
+        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
+        title.setStyleSheet(f"color: {style_sheet.text}; background: transparent;")
+        layout.addWidget(title)
+
+        # Version info
+        version_text = f"Version {update_info.version} is now available."
+        ver_label = QLabel(version_text)
+        ver_label.setStyleSheet(f"color: {style_sheet.text}; background: transparent; font-size: 13px;")
+        layout.addWidget(ver_label)
+
+        # Release notes (truncated)
+        notes = update_info.release_notes.strip()
+        if notes:
+            if len(notes) > 200:
+                notes = notes[:200] + "..."
+            notes_label = QLabel(notes)
+            notes_label.setStyleSheet(f"color: {style_sheet.text_secondary}; background: transparent; font-size: 11px;")
+            notes_label.setWordWrap(True)
+            notes_label.setMaximumHeight(60)
+            layout.addWidget(notes_label)
+
+        # Size info
+        if update_info.size_bytes > 0:
+            size_mb = update_info.size_bytes / (1024 * 1024)
+            size_label = QLabel(f"Download size: {size_mb:.1f} MB")
+            size_label.setStyleSheet(f"color: {style_sheet.text_secondary}; background: transparent; font-size: 11px;")
+            layout.addWidget(size_label)
+
+        # Progress bar (hidden initially)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        self.progress_bar.setFixedHeight(6)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: none;
+                border-radius: 3px;
+                background-color: {style_sheet.border};
+            }}
+            QProgressBar::chunk {{
+                border-radius: 3px;
+                background-color: {style_sheet.accent};
+            }}
+        """)
+        layout.addWidget(self.progress_bar)
+
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet(f"color: {style_sheet.text_secondary}; background: transparent; font-size: 11px;")
+        self.status_label.setVisible(False)
+        layout.addWidget(self.status_label)
+
+        layout.addStretch()
+
+        # Buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(12)
+
+        self.later_btn = QPushButton("Later")
+        self.later_btn.setFixedHeight(36)
+        self.later_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.later_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {style_sheet.card_bg};
+                color: {style_sheet.text};
+                border: 1px solid {style_sheet.border};
+                border-radius: 8px;
+                padding: 0 20px;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                border-color: {style_sheet.accent};
+            }}
+        """)
+        self.later_btn.clicked.connect(self._on_later)
+        btn_layout.addWidget(self.later_btn)
+
+        self.install_btn = QPushButton("Install Now")
+        self.install_btn.setFixedHeight(36)
+        self.install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.install_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {style_sheet.accent};
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 0 20px;
+                font-size: 13px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {style_sheet.accent_hover};
+            }}
+        """)
+        self.install_btn.clicked.connect(self._on_install)
+        btn_layout.addWidget(self.install_btn)
+
+        layout.addLayout(btn_layout)
+
+    def _on_later(self):
+        self.result = False
+        self.reject()
+
+    def _on_install(self):
+        self.result = True
+        self.accept()
 
 
 class MainWindow(QMainWindow):
@@ -210,6 +396,9 @@ class MainWindow(QMainWindow):
         # Enable Windows 11 DWM effects (shadow + rounded corners)
         self._setup_dwm()
 
+        # System tray setup
+        self._setup_system_tray()
+
         # Load current DNS info
         self._refresh_dns_info()
 
@@ -224,12 +413,16 @@ class MainWindow(QMainWindow):
         self._dns_status_timer.timeout.connect(self._periodic_dns_check)
         self._dns_status_timer.start(30000)
 
+        # Auto-update check on startup (silent, after 5 seconds)
+        if self.settings.get("auto_update_check", True):
+            QTimer.singleShot(5000, lambda: self._check_for_updates(silent=True))
+
     def _load_icon(self, name: str, color: str = None) -> QIcon:
         """Load an SVG icon, replacing currentColor with the given color."""
         from PySide6.QtSvg import QSvgRenderer
         from PySide6.QtGui import QImage, QPainter, QPixmap
         from PySide6.QtCore import QByteArray
-        path = Path(__file__).parent.parent / "assets" / "icons" / f"{name}.svg"
+        path = _base_dir() / "assets" / "icons" / f"{name}.svg"
         data = path.read_bytes().decode("utf-8")
         if color:
             data = data.replace("currentColor", color)
@@ -246,7 +439,7 @@ class MainWindow(QMainWindow):
     def _load_translations(self) -> dict:
         """Load translations from JSON files."""
         translations = {}
-        base_dir = Path(__file__).parent.parent / "translations"
+        base_dir = _base_dir() / "translations"
 
         for lang in ["en", "fa"]:
             lang_file = base_dir / f"{lang}.json"
@@ -258,7 +451,7 @@ class MainWindow(QMainWindow):
 
     def _load_settings(self) -> dict:
         """Load application settings."""
-        settings_file = Path(__file__).parent.parent / "config" / "settings.json"
+        settings_file = _app_dir() / "config" / "settings.json"
         if settings_file.exists():
             try:
                 with open(settings_file, "r", encoding="utf-8") as f:
@@ -269,7 +462,7 @@ class MainWindow(QMainWindow):
 
     def _save_settings(self):
         """Save application settings."""
-        settings_dir = Path(__file__).parent.parent / "config"
+        settings_dir = _app_dir() / "config"
         settings_dir.mkdir(exist_ok=True)
         settings_file = settings_dir / "settings.json"
 
@@ -280,6 +473,7 @@ class MainWindow(QMainWindow):
             "auto_apply": self.settings.get("auto_apply", False),
             "favorites": sorted(self.dns_card.favorites) if self.dns_card else self.settings.get("favorites", []),
             "auto_flush_dns": self.auto_flush_check.isChecked(),
+            "auto_update_check": self.settings.get("auto_update_check", True),
         }
 
         with open(settings_file, "w", encoding="utf-8") as f:
@@ -330,6 +524,64 @@ class MainWindow(QMainWindow):
             )
         except Exception:
             pass  # Silently ignore DWM errors on older Windows
+
+    def _setup_system_tray(self):
+        """Set up the system tray icon with context menu."""
+        self.tray_icon = QSystemTrayIcon(self)
+
+        # Load the application icon for the tray
+        icon_path = _base_dir() / "assets" / "icon.png"
+        if icon_path.exists():
+            self.tray_icon.setIcon(QIcon(str(icon_path)))
+        else:
+            # Fallback: use a standard icon
+            self.tray_icon.setIcon(self.style().standardIcon(
+                self.style().StandardPixmap.SP_ComputerIcon
+            ))
+
+        self.tray_icon.setToolTip("DNS Changer")
+
+        # Create context menu
+        tray_menu = QMenu()
+
+        # Open action
+        open_action = QAction("Open", self)
+        open_action.triggered.connect(self._show_from_tray)
+        tray_menu.addAction(open_action)
+
+        # Separator
+        tray_menu.addSeparator()
+
+        # Exit action
+        exit_action = QAction("Exit", self)
+        exit_action.triggered.connect(self._exit_from_tray)
+        tray_menu.addAction(exit_action)
+
+        self.tray_icon.setContextMenu(tray_menu)
+
+        # Double-click to restore
+        self.tray_icon.activated.connect(self._on_tray_activated)
+
+    def _on_tray_activated(self, reason):
+        """Handle tray icon activation (double-click to restore)."""
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            self._show_from_tray()
+
+    def _minimize_to_tray(self):
+        """Hide window to system tray."""
+        self.hide()
+        self.tray_icon.show()
+
+    def _show_from_tray(self):
+        """Restore and activate the main window from tray."""
+        self.showNormal()
+        self.activateWindow()
+        self.raise_()
+
+    def _exit_from_tray(self):
+        """Exit the application completely from tray menu."""
+        self.tray_icon.hide()
+        QApplication.quit()
 
     def _setup_ui(self):
         """Set up the main UI layout."""
@@ -412,6 +664,17 @@ class MainWindow(QMainWindow):
         self.lang_btn.clicked.connect(self._toggle_language)
         self._update_lang_button()
         header_layout.addWidget(self.lang_btn)
+
+        # Check for Updates button
+        self.update_btn = QPushButton()
+        self.update_btn.setFixedSize(40, 40)
+        self.update_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
+        self.update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_btn.setToolTip("Check for Updates")
+        self.update_btn.setIcon(self._load_icon("chart", self.style_sheet.text))
+        self.update_btn.setIconSize(QSize(20, 20))
+        self.update_btn.clicked.connect(self._check_for_updates)
+        header_layout.addWidget(self.update_btn)
 
         content_layout.addLayout(header_layout)
 
@@ -499,6 +762,8 @@ class MainWindow(QMainWindow):
 
         self.theme_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
         self.lang_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
+        self.update_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
+        self.update_btn.setIcon(self._load_icon("chart", self.style_sheet.text))
         self.title.setStyleSheet(self.style_sheet.get_title_style())
 
         self._refresh_auto_flush_style()
@@ -577,6 +842,112 @@ class MainWindow(QMainWindow):
             self.dns_card.manage_btn.setText(" " + self.t("manage_dns"))
             self.dns_card.sort_btn.setText(" " + self.t("sort"))
             self.dns_card.title_label.setText(self.t("dns_settings"))
+
+    # ── Update system ──────────────────────────────────────────────
+
+    def _check_for_updates(self, silent: bool = False):
+        """Check GitHub for a newer version. silent=True suppresses 'up to date' messages."""
+        self._update_silent = silent
+        self._update_check_worker = UpdateCheckWorker()
+        self._update_check_worker.update_available.connect(self._on_update_check_result)
+        self._update_check_worker.error.connect(self._on_update_check_error)
+        self._update_check_worker.start()
+
+    def _on_update_check_result(self, info):
+        """Handle the result of an update check."""
+        if info is None:
+            if not self._update_silent:
+                self.status_label.setText("You are up to date.")
+                QTimer.singleShot(3000, lambda: self.status_label.setText(""))
+            return
+
+        dialog = UpdateDialog(info, self.style_sheet, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._start_update_download(info)
+
+    def _on_update_check_error(self, error_msg):
+        """Handle an update check failure."""
+        if not self._update_silent:
+            self.status_label.setText("Update check failed.")
+            QTimer.singleShot(3000, lambda: self.status_label.setText(""))
+
+    def _start_update_download(self, info: UpdateInfo):
+        """Download the installer in background, then prompt to launch updater."""
+        import tempfile
+
+        self._update_info = info
+        self._update_temp_dir = Path(tempfile.gettempdir()) / "dns_jantex_update"
+        self._update_temp_dir.mkdir(exist_ok=True)
+
+        # Determine filename from URL
+        filename = info.download_url.split("/")[-1].split("?")[0]
+        self._update_installer_path = self._update_temp_dir / filename
+
+        self.status_label.setText("Downloading update...")
+        self._set_buttons_enabled(False)
+
+        # Download in a thread
+        self._download_worker = DownloadWorker(info.download_url, self._update_installer_path)
+        self._download_worker.progress.connect(self._on_download_progress)
+        self._download_worker.finished.connect(self._on_download_finished)
+        self._download_worker.start()
+
+    def _on_download_progress(self, downloaded, total):
+        if total > 0:
+            pct = int(downloaded * 100 / total)
+            self.status_label.setText(f"Downloading update... {pct}%")
+
+    def _on_download_finished(self, success):
+        self._set_buttons_enabled(True)
+        if not success:
+            self.status_label.setText("Download failed. Please try again later.")
+            QTimer.singleShot(4000, lambda: self.status_label.setText(""))
+            self._cleanup_update_files()
+            return
+
+        self.status_label.setText("Download complete. Launching updater...")
+        QTimer.singleShot(500, self._launch_updater)
+
+    def _launch_updater(self):
+        """Launch Updater.exe and close this application."""
+        import subprocess
+
+        # When frozen, Updater.exe lives next to the main exe; in dev, next to project root
+        if getattr(sys, "frozen", False):
+            app_dir = Path(sys.executable).parent
+        else:
+            app_dir = Path(__file__).resolve().parent.parent
+
+        updater_exe = app_dir / "Updater.exe"
+
+        if not updater_exe.exists():
+            # Try dist directory
+            updater_exe = app_dir.parent / "dist" / "Updater" / "Updater.exe"
+
+        if not updater_exe.exists():
+            self.status_label.setText("Updater.exe not found.")
+            QTimer.singleShot(3000, lambda: self.status_label.setText(""))
+            self._cleanup_update_files()
+            return
+
+        # Launch the updater
+        subprocess.Popen(
+            [str(updater_exe), str(self._update_installer_path), "DNSChanger.exe"],
+            creationflags=subprocess.DETACHED_PROCESS,
+        )
+
+        # Close the main application
+        self.tray_icon.hide()
+        QApplication.quit()
+
+    def _cleanup_update_files(self):
+        """Remove temporary update files."""
+        import shutil
+        try:
+            if self._update_temp_dir.exists():
+                shutil.rmtree(self._update_temp_dir, ignore_errors=True)
+        except Exception:
+            pass
 
     def _refresh_dns_info(self):
         """Refresh and display current DNS configuration."""
@@ -972,7 +1343,7 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     def closeEvent(self, event):
-        """Handle window close event."""
+        """Handle window close event - exit completely, not minimize to tray."""
         # Save settings before closing
         self._save_settings()
 
@@ -985,5 +1356,9 @@ class MainWindow(QMainWindow):
         if self.dns_worker and self.dns_worker.isRunning():
             self.dns_worker.terminate()
             self.dns_worker.wait(1000)
+
+        # Hide tray icon before exiting
+        if hasattr(self, 'tray_icon') and self.tray_icon:
+            self.tray_icon.hide()
 
         event.accept()

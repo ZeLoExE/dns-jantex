@@ -12,11 +12,18 @@ from ui.styles import StyleSheet
 
 def _load_icon(name: str, color: str = None) -> QIcon:
     """Load an SVG icon, replacing currentColor with the given color."""
+    import sys
     from pathlib import Path
     from PySide6.QtSvg import QSvgRenderer
     from PySide6.QtGui import QImage, QPainter, QPixmap
     from PySide6.QtCore import QByteArray
-    path = Path(__file__).parent.parent / "assets" / "icons" / f"{name}.svg"
+
+    if getattr(sys, "frozen", False):
+        base = Path(sys._MEIPASS)
+    else:
+        base = Path(__file__).resolve().parent.parent
+
+    path = base / "assets" / "icons" / f"{name}.svg"
     data = path.read_bytes().decode("utf-8")
     if color:
         data = data.replace("currentColor", color)

@@ -62,6 +62,9 @@ Section "DNS Jantex (required)" SecMain
     ; Install main executable
     File "dist\DNSChanger\DNSChanger.exe"
 
+    ; Install updater
+    File "dist\Updater\Updater.exe"
+
     ; Install internal dependencies
     SetOutPath "$INSTDIR\_internal"
     File /r "dist\DNSChanger\_internal\*.*"
@@ -130,6 +133,7 @@ LangString DESC_SecStartMenu ${LANG_ENGLISH} "Create Start Menu shortcuts."
 Section "Uninstall"
     ; Remove files
     Delete "$INSTDIR\DNSChanger.exe"
+    Delete "$INSTDIR\Updater.exe"
     Delete "$INSTDIR\icon.ico"
     Delete "$INSTDIR\Uninstall.exe"
     RMDir /r "$INSTDIR\_internal"

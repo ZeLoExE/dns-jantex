@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 from dataclasses import dataclass, asdict
 from typing import Optional
 
@@ -19,8 +20,13 @@ class CustomDNSEntry:
             self.id = f"{self.name}_{self.primary}".replace(" ", "_").lower()
 
 
-# Storage path
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config")
+# Storage path — writable location next to the executable (not inside _MEIPASS)
+if getattr(sys, "frozen", False):
+    _APP_DIR = os.path.dirname(sys.executable)
+else:
+    _APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DATA_DIR = os.path.join(_APP_DIR, "config")
 CUSTOM_DNS_FILE = os.path.join(DATA_DIR, "custom_dns.json")
 
 

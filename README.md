@@ -1,18 +1,18 @@
 <p align="center">
-  <img src="docs/icon.png" width="100">
+  <img src="docs/Icon.png" width="100">
 </p>
 
 <h1 align="center">DNS Jantex</h1>
 
 <p align="center">
-  A modern Windows DNS management app with 50+ providers, latency testing, Smart Connect, and Persian support.
+  A modern Windows DNS management app with 70+ providers, latency testing, Smart Connect, system tray, auto-updater, and Persian support.
 </p>
 
 ---
 
 ## Features
 
-- **50+ DNS providers** — Google, Cloudflare, Quad9, AdGuard, and many more
+- **70+ DNS providers** — Google, Cloudflare, Quad9, AdGuard, OpenDNS, Norton, Level3, and many more
 - **Smart Connect** — one-click benchmark that auto-selects the fastest provider
 - **Tag filters** — filter providers by Gaming, Ad Blocking, Family Safe, Privacy, Security, or Anti-Sanction
 - **Favorites system** — star your most-used DNS providers to pin them to the top of the list
@@ -23,6 +23,8 @@
 - **DNS analytics** — live uptime, success rate, and query count displayed in real time
 - **Status indicator** — green/yellow/red dot shows DNS health at a glance
 - **Auto-Flush DNS** — optionally flush DNS cache automatically after every Apply
+- **System tray** — minimize to tray, double-click to restore, right-click context menu
+- **Auto-updater** — checks GitHub Releases for new versions, downloads and installs silently
 - **Dark & light themes** — switch with one click, fully theme-aware UI
 - **English & Persian** — full Farsi language support with RTL layout
 - **One-click apply** — fast DNS switching with instant confirmation
@@ -37,7 +39,7 @@
 <p align="center">
   <img src="docs/screenshot-2026.png" width="700">
   <br>
-  <em>Dark mode</em>
+  <em>Dark mode with latency testing</em>
 </p>
 
 ## Download
@@ -66,6 +68,8 @@ Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jan
 5. Star your favorite providers for quick access
 6. Use the search bar to find any DNS by name or IP address
 7. Save custom DNS presets from the Custom DNS card
+8. Minimize to system tray — app keeps running in the background
+9. Check for updates via the update button in the header
 
 ## Building from Source
 
@@ -76,8 +80,8 @@ pip install -r requirements.txt
 # Run directly
 python main.py
 
-# Build executable
-pyinstaller build.spec
+# Build executables (DNSChanger.exe + Updater.exe)
+build.bat
 
 # Build installer (requires NSIS)
 makensis installer.nsi
@@ -88,24 +92,40 @@ makensis installer.nsi
 ```
 dns-jantex/
 ├── main.py                 # Application entry point
+├── updater.py              # Standalone updater script
+├── VERSION                 # Current version string
 ├── ui/                     # User interface
-│   ├── main_window.py      # Main window
+│   ├── main_window.py      # Main window + system tray + updater UI
 │   ├── components.py       # UI components (DNSCard, NetworkInfoCard, etc.)
 │   ├── styles.py           # Themes and styles
 │   └── custom_dns_dialog.py
 ├── core/                   # Core logic
 │   ├── dns_manager.py      # DNS operations
-│   ├── dns_providers.py    # Provider list (50+)
+│   ├── dns_providers.py    # Provider list (70+)
 │   ├── network_adapter.py  # Network detection
-│   └── custom_dns.py       # Custom DNS persistent storage
+│   ├── custom_dns.py       # Custom DNS persistent storage
+│   └── updater.py          # Update checker (GitHub Releases API)
 ├── translations/           # Language files
 │   ├── en.json
 │   └── fa.json
 ├── assets/                 # Icons and images
 │   └── icons/              # SVG icon set
-├── build.spec              # PyInstaller config
+├── build.bat               # Build script (app + updater)
+├── build.spec              # PyInstaller config for main app
+├── build_updater.spec      # PyInstaller config for updater
 └── installer.nsi           # NSIS installer script
 ```
+
+## What's New in v2.5
+
+- **System tray** — minimize to tray instead of taskbar; double-click tray icon to restore, right-click for context menu (Open / Exit)
+- **Auto-updater** — checks GitHub Releases on startup (configurable), downloads installer in background, launches standalone Updater.exe for silent install
+- **Standalone Updater.exe** — waits for main app exit, runs NSIS installer silently, relaunches the updated app, cleans up temp files
+- **Update button** — new header button to manually check for updates with progress feedback
+- **70+ DNS providers** — added Norton, Level3 variants, Dyn, Qwest, UltraDNS, Zen Internet, Orange DNS, Neustar, DNS4EU, Sprint, Sprintlink, DNS WATCH, Freenom World, FDN, and more
+- **Tag-based filtering** — all new providers tagged for Gaming, Security, Privacy, etc.
+- **PyInstaller path fixes** — correct resource resolution in bundled executables (read-only vs writable paths)
+- **Light mode fix** — update button icon now adapts to the current theme
 
 ## What's New in v2.4
 
