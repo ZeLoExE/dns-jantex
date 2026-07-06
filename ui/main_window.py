@@ -765,9 +765,9 @@ class MainWindow(QMainWindow):
         parent = dialog.parentWidget()
         if parent:
             dialog.adjustSize()
-            px = parent.x() + (parent.width() - dialog.width()) // 2
-            py = parent.y() + (parent.height() - dialog.height()) // 2
-            dialog.move(px, py)
+            center = parent.rect().center()
+            global_pos = parent.mapToGlobal(center)
+            dialog.move(global_pos.x() - dialog.width() // 2, global_pos.y() - dialog.height() // 2)
 
     def _show_success(self, message: str):
         """Show success notification."""
