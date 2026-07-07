@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import time
+import traceback
 import ctypes
 from pathlib import Path
 from PySide6.QtWidgets import (
@@ -244,13 +245,23 @@ class UpdateCheckWorker(QThread):
         self.error_msg = None
 
     def run(self):
+        from core.updater import _log
+        _log("Worker.run: START (thread={})".format(id(self)))
         try:
+            from core.updater import UpdateChecker
             checker = UpdateChecker()
+            _log("Worker.run: calling check_for_update()...")
             self.result = checker.check_for_update()
+            _log(f"Worker.run: check_for_update returned: {type(self.result).__name__}")
+            if self.result:
+                _log(f"  result.version={self.result.version}")
+            else:
+                _log("  result=None (up to date)")
         except Exception as e:
-            import traceback
-            traceback.print_exc()
+            _log(f"Worker.run: EXCEPTION: {e}")
+            _log(f"Traceback:\n{traceback.format_exc()}")
             self.error_msg = str(e)
+        _log("Worker.run: END")
 
 
 class DownloadWorker(QThread):
@@ -745,7 +756,7 @@ class MainWindow(QMainWindow):
         self.update_btn.setToolTip("Check for Updates")
         self.update_btn.setIcon(self._load_icon("update", self.style_sheet.text))
         self.update_btn.setIconSize(QSize(20, 20))
-        self.update_btn.clicked.connect(self._check_for_updates)
+        self.update_btn.clicked.connect(self._on_update_btn_clicked)
         header_layout.addWidget(self.update_btn)
 
         content_layout.addLayout(header_layout)
@@ -917,10 +928,18 @@ class MainWindow(QMainWindow):
 
     # ── Update system ──────────────────────────────────────────────
 
+    def _on_update_btn_clicked(self):
+        from core.updater import _log
+        _log("=== UPDATE BUTTON CLICKED ===")
+        self._check_for_updates()
+
     def _check_for_updates(self, silent: bool = False):
         """Check GitHub for a newer version. silent=True suppresses 'up to date' messages."""
+        from core.updater import _log
+        _log(f"_check_for_updates: called, silent={silent}, _update_checking={getattr(self, '_update_checking', False)}")
         # Prevent concurrent checks
         if hasattr(self, '_update_checking') and self._update_checking:
+            _log("_check_for_updates: BLOCKED by concurrent check guard")
             return
 
         self._update_silent = silent
@@ -930,44 +949,78 @@ class MainWindow(QMainWindow):
 
         self._update_check_worker = UpdateCheckWorker()
         self._update_check_worker.finished.connect(self._on_update_check_done)
+        _log("_check_for_updates: worker created, starting thread...")
         self._update_check_worker.start()
+        _log("_check_for_updates: thread started")
 
     def _on_update_check_done(self):
         """Read the worker's result and dispatch on the main thread."""
+        from core.updater import _log
+        _log(f"_on_update_check_done: fired, worker={self._update_check_worker}")
         worker = self._update_check_worker
+        _log(f"  worker.error_msg={worker.error_msg}")
+        _log(f"  worker.result={worker.result}")
         self._update_checking = False
         self.update_btn.setEnabled(True)
         self.update_btn.setToolTip("Check for Updates")
 
         if worker.error_msg:
+            _log("_on_update_check_done: dispatching to _on_update_check_error")
             self._on_update_check_error(worker.error_msg)
         else:
+            _log("_on_update_check_done: dispatching to _on_update_check_result")
             self._on_update_check_result(worker.result)
 
     def _on_update_check_result(self, info):
         """Handle the result of an update check."""
+        from core.updater import _log
+        _log(f"_on_update_check_result: info={info}")
         if info is None:
+            _log("  info is None -> showing 'up to date' dialog")
             if not self._update_silent:
+                _log("  Creating SuccessDialog...")
                 dialog = SuccessDialog(
                     "No Updates", "You're already using the latest version.",
                     self.style_sheet, "success", self
                 )
+                _log("  Calling dialog.exec()...")
                 dialog.exec()
+                _log("  dialog.exec() returned")
+            else:
+                _log("  silent=True, skipping dialog")
             return
 
-        dialog = UpdateDialog(info, self.style_sheet, parent=self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self._start_update_download(info)
+        _log(f"  info is UpdateInfo(version={info.version}) -> creating UpdateDialog")
+        try:
+            dialog = UpdateDialog(info, self.style_sheet, parent=self)
+            _log("  UpdateDialog created, calling dialog.exec()...")
+            result = dialog.exec()
+            _log(f"  dialog.exec() returned: {result}")
+            if result == QDialog.DialogCode.Accepted:
+                _log("  User clicked Install -> calling _start_update_download")
+                self._start_update_download(info)
+            else:
+                _log("  User clicked Later or closed dialog")
+        except Exception as e:
+            _log(f"  EXCEPTION creating/showing UpdateDialog: {e}")
+            _log(f"  Traceback:\n{traceback.format_exc()}")
 
     def _on_update_check_error(self, error_msg):
         """Handle an update check failure."""
+        from core.updater import _log
+        _log(f"_on_update_check_error: error_msg={error_msg}")
         if not self._update_silent:
+            _log("  Creating error SuccessDialog...")
             dialog = SuccessDialog(
                 "Update Check Failed",
                 f"Could not check for updates.\n{error_msg}",
                 self.style_sheet, "error", self
             )
+            _log("  Calling dialog.exec()...")
             dialog.exec()
+            _log("  dialog.exec() returned")
+        else:
+            _log("  silent=True, skipping error dialog")
 
     def _start_update_download(self, info: UpdateInfo):
         """Download the installer in background, then prompt to launch updater."""
