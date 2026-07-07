@@ -364,7 +364,7 @@ class UpdateDialog(QDialog):
         self.later_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.later_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {style_sheet.card_bg};
+                background-color: {style_sheet.card};
                 color: {style_sheet.text};
                 border: 1px solid {style_sheet.border};
                 border-radius: 8px;
