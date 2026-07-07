@@ -61,8 +61,6 @@ class UpdateChecker:
         Returns UpdateInfo if an update is available, None otherwise.
         Raises on network errors.
         """
-        print(f"[UPDATE] Current version: {self.current_version}", file=sys.stderr, flush=True)
-
         req = urllib.request.Request(
             GITHUB_API_URL,
             headers={
@@ -75,22 +73,12 @@ class UpdateChecker:
             data = json.loads(resp.read().decode("utf-8"))
 
         latest_version = data.get("tag_name", "")
-        print(f"[UPDATE] Latest from GitHub: '{latest_version}'", file=sys.stderr, flush=True)
-
         if not latest_version:
-            print("[UPDATE] No tag_name in response, returning None", file=sys.stderr, flush=True)
             return None
-
-        parsed_latest = _parse_version(latest_version)
-        parsed_current = _parse_version(self.current_version)
-        print(f"[UPDATE] Parsed latest: {parsed_latest}, current: {parsed_current}", file=sys.stderr, flush=True)
 
         # Compare versions
-        if parsed_latest <= parsed_current:
-            print("[UPDATE] Latest <= Current, returning None", file=sys.stderr, flush=True)
+        if _parse_version(latest_version) <= _parse_version(self.current_version):
             return None
-
-        print("[UPDATE] Update available!", file=sys.stderr, flush=True)
 
         # Find the installer asset
         download_url = ""
@@ -100,7 +88,6 @@ class UpdateChecker:
             if name.lower().endswith(".exe") and "setup" in name.lower():
                 download_url = asset.get("browser_download_url", "")
                 size_bytes = asset.get("size", 0)
-                print(f"[UPDATE] Found setup asset: {name} ({size_bytes} bytes)", file=sys.stderr, flush=True)
                 break
 
         if not download_url:
@@ -109,14 +96,11 @@ class UpdateChecker:
                 if asset.get("name", "").lower().endswith(".exe"):
                     download_url = asset.get("browser_download_url", "")
                     size_bytes = asset.get("size", 0)
-                    print(f"[UPDATE] Fallback asset: {asset.get('name')}", file=sys.stderr, flush=True)
                     break
 
         if not download_url:
-            print("[UPDATE] No download URL found, returning None", file=sys.stderr, flush=True)
             return None
 
-        print(f"[UPDATE] Returning UpdateInfo: version={latest_version}, url={download_url[:60]}...", file=sys.stderr, flush=True)
         return UpdateInfo(
             version=latest_version,
             download_url=download_url,
