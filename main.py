@@ -10,18 +10,18 @@ import traceback
 
 def _setup_crash_log():
     """Install a global exception handler that writes tracebacks to a log file."""
-    log_dir = _app_dir()
-    log_path = os.path.join(log_dir, "crash.log")
+    log_path = os.path.join(os.environ.get("TEMP", "."), "dns_jantex_crash.log")
 
     def _excepthook(exc_type, exc_value, exc_tb):
-        tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+        try:
+            tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+        except Exception:
+            tb = repr(exc_value)
         try:
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(f"--- crash ---\n{tb}\n")
         except Exception:
             pass
-        # Also print to stderr so it's visible if run from terminal
-        print(tb, file=sys.stderr)
 
     sys.excepthook = _excepthook
 
