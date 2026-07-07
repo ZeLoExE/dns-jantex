@@ -240,16 +240,17 @@ class UpdateCheckWorker(QThread):
 
     def __init__(self):
         super().__init__()
+        self.result = None
+        self.error_msg = None
 
     def run(self):
         try:
             checker = UpdateChecker()
-            info = checker.check_for_update()
-            self.update_available.emit(info)
+            self.result = checker.check_for_update()
         except Exception as e:
             import traceback
             traceback.print_exc()
-            self.error.emit(str(e))
+            self.error_msg = str(e)
 
 
 class DownloadWorker(QThread):
@@ -261,10 +262,10 @@ class DownloadWorker(QThread):
         super().__init__()
         self.url = url
         self.dest = dest
+        self.success = False
 
     def run(self):
-        success = download_file(self.url, self.dest, self._on_progress)
-        self.finished.emit(success)
+        self.success = download_file(self.url, self.dest, self._on_progress)
 
     def _on_progress(self, downloaded, total):
         self.progress.emit(downloaded, total)
@@ -928,16 +929,20 @@ class MainWindow(QMainWindow):
         self.update_btn.setToolTip("Checking...")
 
         self._update_check_worker = UpdateCheckWorker()
-        self._update_check_worker.update_available.connect(self._on_update_check_result)
-        self._update_check_worker.error.connect(self._on_update_check_error)
         self._update_check_worker.finished.connect(self._on_update_check_done)
         self._update_check_worker.start()
 
     def _on_update_check_done(self):
-        """Re-enable the update button after check completes."""
+        """Read the worker's result and dispatch on the main thread."""
+        worker = self._update_check_worker
         self._update_checking = False
         self.update_btn.setEnabled(True)
         self.update_btn.setToolTip("Check for Updates")
+
+        if worker.error_msg:
+            self._on_update_check_error(worker.error_msg)
+        else:
+            self._on_update_check_result(worker.result)
 
     def _on_update_check_result(self, info):
         """Handle the result of an update check."""
@@ -956,8 +961,6 @@ class MainWindow(QMainWindow):
 
     def _on_update_check_error(self, error_msg):
         """Handle an update check failure."""
-        import traceback
-        traceback.print_exc()
         if not self._update_silent:
             dialog = SuccessDialog(
                 "Update Check Failed",
@@ -992,9 +995,9 @@ class MainWindow(QMainWindow):
             pct = int(downloaded * 100 / total)
             self.status_label.setText(f"Downloading update... {pct}%")
 
-    def _on_download_finished(self, success):
+    def _on_download_finished(self):
         self._set_buttons_enabled(True)
-        if not success:
+        if not self._download_worker.success:
             self.status_label.setText("Download failed. Please try again later.")
             QTimer.singleShot(4000, lambda: self.status_label.setText(""))
             self._cleanup_update_files()
