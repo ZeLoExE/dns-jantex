@@ -17,12 +17,12 @@ Unicode True
 ;--------------------------------
 ; Version Info
 ;--------------------------------
-VIProductVersion "2.6.2.0"
+VIProductVersion "2.6.3.0"
 VIAddVersionKey "ProductName" "DNS Jantex"
 VIAddVersionKey "CompanyName" "DNS Jantex"
 VIAddVersionKey "FileDescription" "DNS Jantex Installer"
-VIAddVersionKey "FileVersion" "2.6.2"
-VIAddVersionKey "ProductVersion" "2.6.2"
+VIAddVersionKey "FileVersion" "2.6.3"
+VIAddVersionKey "ProductVersion" "2.6.3"
 VIAddVersionKey "LegalCopyright" "DNS Jantex"
 
 ;--------------------------------
@@ -91,7 +91,7 @@ Section "DNS Jantex (required)" SecMain
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
         "Publisher" "DNS Jantex"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
-        "DisplayVersion" "2.6.2"
+        "DisplayVersion" "2.6.3"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
         "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
