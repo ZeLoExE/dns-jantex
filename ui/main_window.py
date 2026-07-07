@@ -267,7 +267,6 @@ class UpdateCheckWorker(QThread):
 class DownloadWorker(QThread):
     """Worker thread for downloading update files."""
     progress = Signal(int, int)  # bytes_downloaded, total_bytes
-    finished = Signal(bool)  # success
 
     def __init__(self, url: str, dest: Path):
         super().__init__()
