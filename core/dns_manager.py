@@ -10,6 +10,10 @@ from .powershell import PowerShellExecutor
 class DNSManager:
     """Manages DNS settings for network adapters."""
 
+    # Cache: avoids re-querying adapter info on every operation
+    _cached_adapter_name: Optional[str] = None
+    _cache_lock = threading.Lock()
+
     @staticmethod
     def validate_dns(address: str) -> bool:
         """Validate an IP address format."""
@@ -19,35 +23,66 @@ class DNSManager:
         parts = address.split('.')
         return all(0 <= int(part) <= 255 for part in parts)
 
+    @classmethod
+    def _get_iface(cls, adapter_name: Optional[str] = None) -> tuple[Optional[str], Optional[str]]:
+        """Return the interface alias, using cache when possible.
+
+        Returns (iface_name, error_or_None).
+        """
+        if adapter_name:
+            return adapter_name, None
+
+        with cls._cache_lock:
+            if cls._cached_adapter_name:
+                return cls._cached_adapter_name, None
+
+        adapter = NetworkAdapterDetector.get_active_adapter()
+        if not adapter:
+            return None, "No active network adapter found"
+
+        with cls._cache_lock:
+            cls._cached_adapter_name = adapter.name
+        return adapter.name, None
+
+    @classmethod
+    def invalidate_cache(cls):
+        """Clear the cached adapter name so the next operation re-queries."""
+        with cls._cache_lock:
+            cls._cached_adapter_name = None
+
     @staticmethod
     def set_dns(primary: str, secondary: str = "", adapter_name: Optional[str] = None) -> tuple[bool, str]:
-        """Set DNS servers using PowerShell. Clears old entries before applying new ones."""
+        """Set DNS servers and flush cache in a single PowerShell call."""
+        import sys
+        _t0 = time.perf_counter()
+
         if not DNSManager.validate_dns(primary):
             return False, f"Invalid primary DNS: {primary}"
         if secondary and not DNSManager.validate_dns(secondary):
             return False, f"Invalid secondary DNS: {secondary}"
 
-        adapter = NetworkAdapterDetector.get_active_adapter()
-        if not adapter:
-            return False, "No active network adapter found"
-        
-        iface = adapter.name
+        iface, err = DNSManager._get_iface(adapter_name)
+        if not iface:
+            return False, err or "No active network adapter found"
 
-        # Construct PowerShell command to set DNS
-        # We use Set-DnsClientServerAddress which is more modern and atomic than netsh
         if secondary:
             dns_servers = f'"{primary}", "{secondary}"'
         else:
             dns_servers = f'"{primary}"'
 
-        ps_cmd = f'Set-DnsClientServerAddress -InterfaceAlias "{iface}" -ServerAddresses ({dns_servers})'
-        
-        success, output = PowerShellExecutor.execute(ps_cmd)
-        if not success:
-            return False, f"Failed to set DNS: {output}"
+        # Single combined command: set DNS + flush cache (saves 1 PowerShell spawn)
+        ps_cmd = (
+            f'Set-DnsClientServerAddress -InterfaceAlias "{iface}" -ServerAddresses ({dns_servers}); '
+            f'ipconfig /flushdns'
+        )
 
-        # Flush DNS cache after setting new servers
-        DNSManager.flush_dns_cache()
+        success, output = PowerShellExecutor.execute(ps_cmd)
+        elapsed = (time.perf_counter() - _t0) * 1000
+        print(f"[PROFILER] set_dns total: {elapsed:.0f}ms (iface={iface})", file=sys.stderr, flush=True)
+
+        if not success:
+            DNSManager.invalidate_cache()
+            return False, f"Failed to set DNS: {output}"
 
         result = f"DNS set to {primary}"
         if secondary:
@@ -56,28 +91,33 @@ class DNSManager:
 
     @staticmethod
     def reset_to_dhcp(adapter_name: Optional[str] = None) -> tuple[bool, str]:
-        """Reset DNS to automatic (DHCP) for both IPv4 and IPv6."""
-        adapter = NetworkAdapterDetector.get_active_adapter()
-        if not adapter:
-            return False, "No active network adapter found"
-        
-        iface = adapter.name
+        """Reset DNS to automatic (DHCP) and flush cache in a single PowerShell call."""
+        import sys
+        _t0 = time.perf_counter()
 
-        ps_cmd = f'Set-DnsClientServerAddress -InterfaceAlias "{iface}" -ResetServerAddresses'
-        
+        iface, err = DNSManager._get_iface(adapter_name)
+        if not iface:
+            return False, err or "No active network adapter found"
+
+        # Single combined command: reset DNS + flush cache (saves 1 PowerShell spawn)
+        ps_cmd = (
+            f'Set-DnsClientServerAddress -InterfaceAlias "{iface}" -ResetServerAddresses; '
+            f'ipconfig /flushdns'
+        )
+
         success, output = PowerShellExecutor.execute(ps_cmd)
-        if not success:
-            return False, f"Failed to reset DNS: {output}"
+        elapsed = (time.perf_counter() - _t0) * 1000
+        print(f"[PROFILER] reset_to_dhcp total: {elapsed:.0f}ms (iface={iface})", file=sys.stderr, flush=True)
 
-        # Flush DNS cache after reset
-        DNSManager.flush_dns_cache()
+        if not success:
+            DNSManager.invalidate_cache()
+            return False, f"Failed to reset DNS: {output}"
 
         return True, "DNS reset to automatic (DHCP)"
 
     @staticmethod
     def flush_dns_cache() -> tuple[bool, str]:
         """Flush the DNS resolver cache."""
-        # Direct call to ipconfig is fine, but we'll use PowerShellExecutor for consistency
         success, output = PowerShellExecutor.execute("ipconfig /flushdns")
         return (True, "DNS cache flushed") if success else (False, f"Failed to flush DNS: {output}")
 
@@ -90,7 +130,7 @@ class DNSManager:
     def ping_dns_fast(address: str, timeout_ms: int = 1500) -> Optional[float]:
         """Fast single-packet ping using PowerShell."""
         ps_cmd = f'Test-Connection -ComputerName "{address}" -Count 1 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ResponseTime'
-        
+
         success, output = PowerShellExecutor.execute(ps_cmd)
         if success and output:
             try:

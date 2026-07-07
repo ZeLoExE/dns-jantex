@@ -10,8 +10,17 @@ from typing import Optional
 from ui.styles import StyleSheet
 
 
+# SVG icon cache shared across all component instances
+_icon_cache: dict[tuple[str, str | None], QIcon] = {}
+
+
 def _load_icon(name: str, color: str = None) -> QIcon:
-    """Load an SVG icon, replacing currentColor with the given color."""
+    """Load an SVG icon, replacing currentColor with the given color. Uses a shared cache."""
+    cache_key = (name, color)
+    cached = _icon_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     import sys
     from pathlib import Path
     from PySide6.QtSvg import QSvgRenderer
@@ -35,7 +44,9 @@ def _load_icon(name: str, color: str = None) -> QIcon:
     painter = QPainter(img)
     renderer.render(painter)
     painter.end()
-    return QIcon(QPixmap.fromImage(img))
+    icon = QIcon(QPixmap.fromImage(img))
+    _icon_cache[cache_key] = icon
+    return icon
 
 
 class ProviderRow(QFrame):
@@ -1179,10 +1190,12 @@ class NetworkInfoCard(QFrame):
         inet_l.addLayout(inet_top)
 
         self._status_lbl = QLabel("Status: Connected")
+        self._status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._status_lbl.setStyleSheet(f"color: {self.ss.text}; font-size: 12px; font-weight: bold; background: transparent; border: none;")
         inet_l.addWidget(self._status_lbl)
 
         self._adapter_name = QLabel("Active Connection: --")
+        self._adapter_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._adapter_name.setStyleSheet(f"color: {self.ss.text_tertiary}; font-size: 10px; background: transparent; border: none;")
         inet_l.addWidget(self._adapter_name)
 
@@ -1217,6 +1230,7 @@ class NetworkInfoCard(QFrame):
         ip_l.addLayout(ip_top)
 
         self._ip_value = QLabel("--")
+        self._ip_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._ip_value.setStyleSheet(f"color: {self.ss.text}; font-size: 14px; font-weight: bold; background: transparent; border: none;")
         ip_l.addWidget(self._ip_value)
 
@@ -1246,6 +1260,7 @@ class NetworkInfoCard(QFrame):
         uptime_row.addStretch()
         uptime_l.addLayout(uptime_row)
         self._uptime_value = QLabel("--")
+        self._uptime_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._uptime_value.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
         uptime_l.addWidget(self._uptime_value)
         row_b.addWidget(self._uptime_card, 1)
@@ -1269,6 +1284,7 @@ class NetworkInfoCard(QFrame):
         usage_row.addStretch()
         usage_l.addLayout(usage_row)
         self._queries_value = QLabel("--")
+        self._queries_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._queries_value.setStyleSheet(f"color: {self.ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
         usage_l.addWidget(self._queries_value)
         row_b.addWidget(self._usage_card, 1)
@@ -1293,7 +1309,9 @@ class NetworkInfoCard(QFrame):
         dns_l.addLayout(dns_top_row)
         dns_name_row = QHBoxLayout()
         dns_name_row.setSpacing(6)
+        dns_name_row.addStretch()
         self._dns_name = QLabel("--")
+        self._dns_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._dns_name.setStyleSheet(f"color: {self.ss.text}; font-size: 12px; font-weight: bold; background: transparent; border: none;")
         self._dns_name.setMinimumWidth(0)
         dns_name_row.addWidget(self._dns_name)
@@ -1304,6 +1322,7 @@ class NetworkInfoCard(QFrame):
         dns_name_row.addStretch()
         dns_l.addLayout(dns_name_row)
         self._last_change = QLabel("Last Change: --")
+        self._last_change.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._last_change.setStyleSheet(f"color: {self.ss.text_tertiary}; font-size: 9px; background: transparent; border: none;")
         dns_l.addWidget(self._last_change)
         row_b.addWidget(self._dns_card, 1)

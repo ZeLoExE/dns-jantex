@@ -104,6 +104,7 @@ dns-jantex/
 │   ├── dns_providers.py    # Provider list (70+)
 │   ├── network_adapter.py  # Network detection
 │   ├── custom_dns.py       # Custom DNS persistent storage
+│   ├── profiler.py         # Performance profiling utilities
 │   └── updater.py          # Update checker (GitHub Releases API)
 ├── translations/           # Language files
 │   ├── en.json
@@ -115,6 +116,18 @@ dns-jantex/
 ├── build_updater.spec      # PyInstaller config for updater
 └── installer.nsi           # NSIS installer script
 ```
+
+## What's New in v2.6
+
+- **Startup performance** — DNS info loading moved to background thread; window appears instantly
+- **Faster DNS operations** — set DNS + flush combined into a single PowerShell command (3x fewer process spawns)
+- **Adapter name caching** — avoids re-querying the active adapter on every operation
+- **Live uptime display** — uptime counter updates every second without network overhead
+- **SVG icon caching** — icons rendered once and reused, reducing startup time
+- **Proper update icon** — replaced chart icon with arrow-down-circle for "Check for Updates"
+- **Dashboard centering** — network info card values now center-aligned for a cleaner layout
+- **DNS in Use centering** — provider name and status dot centered as a single group
+- **Profiling instrumentation** — all critical paths log timing to stderr for performance analysis
 
 ## What's New in v2.5
 

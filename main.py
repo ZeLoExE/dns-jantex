@@ -4,6 +4,7 @@ DNS Jantex - A modern Windows DNS management application.
 
 import sys
 import os
+import time
 import ctypes
 import traceback
 
@@ -66,6 +67,7 @@ def request_admin():
 
 def main():
     """Main entry point for the DNS Changer application."""
+    _t_start = time.perf_counter()
     _setup_crash_log()
 
     # Check for admin privileges
@@ -73,18 +75,26 @@ def main():
         request_admin()
         return
 
+    print(f"[PROFILER] Admin check: {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
+
     # Import PySide6 modules
     from PySide6.QtWidgets import QApplication
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QFont, QIcon
 
+    print(f"[PROFILER] PySide6 import: {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
+
     from ui.main_window import MainWindow
     from ui.styles import Fonts
+
+    print(f"[PROFILER] UI module import: {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
 
     # Create application
     app = QApplication(sys.argv)
     app.setApplicationName("DNS Jantex")
     app.setOrganizationName("DNS Jantex")
+
+    print(f"[PROFILER] QApplication created: {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
 
     # Set application icon
     icon_path = os.path.join(_bundle_dir(), "assets", "icon.ico")
@@ -101,7 +111,9 @@ def main():
 
     # Create and show main window
     window = MainWindow()
+    print(f"[PROFILER] MainWindow created: {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
     window.show()
+    print(f"[PROFILER] Window shown (startup complete): {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
 
     # Run application
     sys.exit(app.exec())

@@ -40,6 +40,8 @@ class PowerShellExecutor:
         Returns:
             Tuple of (success: bool, output: str)
         """
+        import time as _time
+        _start = _time.perf_counter()
         try:
             full_command = [
                 "powershell.exe",
@@ -59,6 +61,11 @@ class PowerShellExecutor:
             output = result.stdout.strip()
             error = result.stderr.strip()
 
+            _elapsed = (_time.perf_counter() - _start) * 1000
+            _preview = command[:60].replace("\n", " ")
+            import sys as _sys
+            print(f"[PROFILER] PowerShell ({_elapsed:.0f}ms): {_preview}...", file=_sys.stderr, flush=True)
+
             # PowerShell sometimes returns 0 but has errors in stderr
             if error and "FullyQualifiedErrorId" in error:
                 return False, error
@@ -69,6 +76,8 @@ class PowerShellExecutor:
                 return False, error or output
 
         except subprocess.TimeoutExpired:
+            _elapsed = (_time.perf_counter() - _start) * 1000
+            print(f"[PROFILER] PowerShell TIMEOUT ({_elapsed:.0f}ms): {command[:60]}", file=__import__('sys').stderr, flush=True)
             return False, "Command timed out"
         except FileNotFoundError:
             return False, "PowerShell not found"

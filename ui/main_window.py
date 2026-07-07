@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import time
 import ctypes
 from pathlib import Path
 from PySide6.QtWidgets import (
@@ -20,6 +21,12 @@ from core.network_adapter import NetworkAdapterDetector
 from core.dns_providers import DNS_PROVIDERS
 from core.custom_dns import load_custom_dns, add_custom_dns
 from core.updater import UpdateChecker, UpdateInfo, download_file
+
+
+def _proflog(label: str, start: float):
+    """Print a profiling timestamp."""
+    elapsed = (time.perf_counter() - start) * 1000
+    print(f"[PROFILER] {label}: {elapsed:.0f}ms", file=sys.stderr, flush=True)
 
 
 def _base_dir() -> Path:
@@ -162,6 +169,42 @@ class PingWorker(QThread):
 
     def stop(self):
         self._running = False
+
+
+class DNSInfoWorker(QThread):
+    """Background thread that fetches DNS adapter info + pings the DNS server.
+
+    Emitted results are (adapter, provider_name, dns_servers, ping_ms_or_None).
+    Running this off the main thread avoids blocking startup with 2 PowerShell calls.
+    """
+    info_ready = Signal(object, object, object, object)  # adapter, provider_name, dns_servers, ping_ms
+
+    def run(self):
+        try:
+            adapter = DNSManager.get_current_dns_info()
+            provider_name = None
+            dns_servers = None
+            ping_ms = None
+            if adapter:
+                dns_servers = adapter.dns_servers
+                provider_name = _match_dns_to_providers(adapter.dns_servers)
+                if dns_servers:
+                    ping_ms = DNSManager.ping_dns_fast(dns_servers[0].strip(), timeout_ms=2000)
+            self.info_ready.emit(adapter, provider_name, dns_servers, ping_ms)
+        except Exception:
+            self.info_ready.emit(None, None, None, None)
+
+
+def _match_dns_to_providers(dns_servers):
+    """Standalone helper to match DNS servers to a known provider name."""
+    if not dns_servers:
+        return None
+    dns_set = set(s.strip() for s in dns_servers)
+    for provider in DNS_PROVIDERS:
+        provider_set = {provider.primary, provider.secondary}
+        if dns_set == provider_set or dns_set.issubset(provider_set):
+            return provider.name
+    return "Custom DNS"
 
 
 class DNSWorker(QThread):
@@ -359,6 +402,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        _t_init = time.perf_counter()
 
         # Frameless window setup
         self.setWindowFlags(
@@ -385,27 +429,34 @@ class MainWindow(QMainWindow):
         self.ping_worker = None
         self.dns_worker = None
         self.title_bar = None
+        self._dns_info_worker = None
 
         # Analytics state
         self._dns_applied_at = None
         self._dns_success_count = 0
         self._dns_fail_count = 0
+        self._last_adapter_name = None  # track adapter changes for uptime reset
 
         # Update check state
         self._update_checking = False
 
         # Set up UI
+        _proflog("MainWindow pre-_setup_ui", _t_init)
         self._setup_ui()
+        _proflog("MainWindow _setup_ui", _t_init)
         self._apply_theme()
+        _proflog("MainWindow _apply_theme", _t_init)
 
         # Enable Windows 11 DWM effects (shadow + rounded corners)
         self._setup_dwm()
 
         # System tray setup
         self._setup_system_tray()
+        _proflog("MainWindow pre-_refresh_dns_info", _t_init)
 
-        # Load current DNS info
-        self._refresh_dns_info()
+        # Load current DNS info in background thread (non-blocking)
+        self._refresh_dns_info_async()
+        _proflog("MainWindow total __init__", _t_init)
 
         # Auto-apply last selected provider if enabled
         if self.settings.get("auto_apply", False):
@@ -418,12 +469,25 @@ class MainWindow(QMainWindow):
         self._dns_status_timer.timeout.connect(self._periodic_dns_check)
         self._dns_status_timer.start(30000)
 
+        # Live uptime display (every 1 second, pure local computation)
+        self._uptime_timer = QTimer(self)
+        self._uptime_timer.timeout.connect(self._tick_uptime)
+        self._uptime_timer.start(1000)
+
         # Auto-update check on startup (silent, after 5 seconds)
         if self.settings.get("auto_update_check", True):
             QTimer.singleShot(5000, lambda: self._check_for_updates(silent=True))
 
+    # SVG icon cache: (name, color) -> QIcon — avoids re-reading + re-rendering on every call
+    _icon_cache: dict[tuple[str, str | None], QIcon] = {}
+
     def _load_icon(self, name: str, color: str = None) -> QIcon:
-        """Load an SVG icon, replacing currentColor with the given color."""
+        """Load an SVG icon, replacing currentColor with the given color. Uses a cache."""
+        cache_key = (name, color)
+        cached = MainWindow._icon_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         from PySide6.QtSvg import QSvgRenderer
         from PySide6.QtGui import QImage, QPainter, QPixmap
         from PySide6.QtCore import QByteArray
@@ -439,7 +503,9 @@ class MainWindow(QMainWindow):
         painter = QPainter(img)
         renderer.render(painter)
         painter.end()
-        return QIcon(QPixmap.fromImage(img))
+        icon = QIcon(QPixmap.fromImage(img))
+        MainWindow._icon_cache[cache_key] = icon
+        return icon
 
     def _load_translations(self) -> dict:
         """Load translations from JSON files."""
@@ -676,7 +742,7 @@ class MainWindow(QMainWindow):
         self.update_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
         self.update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.update_btn.setToolTip("Check for Updates")
-        self.update_btn.setIcon(self._load_icon("chart", self.style_sheet.text))
+        self.update_btn.setIcon(self._load_icon("update", self.style_sheet.text))
         self.update_btn.setIconSize(QSize(20, 20))
         self.update_btn.clicked.connect(self._check_for_updates)
         header_layout.addWidget(self.update_btn)
@@ -768,7 +834,7 @@ class MainWindow(QMainWindow):
         self.theme_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
         self.lang_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
         self.update_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
-        self.update_btn.setIcon(self._load_icon("chart", self.style_sheet.text))
+        self.update_btn.setIcon(self._load_icon("update", self.style_sheet.text))
         self.title.setStyleSheet(self.style_sheet.get_title_style())
 
         self._refresh_auto_flush_style()
@@ -978,8 +1044,53 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
+    def _refresh_dns_info_async(self):
+        """Refresh DNS info in a background thread so the UI is never blocked."""
+        if self._dns_info_worker and self._dns_info_worker.isRunning():
+            return
+        self._dns_info_worker = DNSInfoWorker()
+        self._dns_info_worker.info_ready.connect(self._on_dns_info_ready)
+        self._dns_info_worker.start()
+
+    def _on_dns_info_ready(self, adapter, provider_name, dns_servers, ping_ms):
+        """Handle background DNS info fetch completing."""
+        if adapter:
+            # Detect adapter change — reset uptime
+            if self._last_adapter_name and self._last_adapter_name != adapter.name:
+                self._dns_applied_at = time.time()
+                self._dns_success_count = 0
+                self._dns_fail_count = 0
+            self._last_adapter_name = adapter.name
+
+            self.network_card.update_info(
+                adapter.name,
+                adapter.ip_address,
+                [provider_name] if provider_name else adapter.dns_servers
+            )
+            # Update DNS status dot based on ping result
+            if ping_ms is None:
+                color = "#f44336"
+                self._dns_fail_count += 1
+            elif ping_ms < 100:
+                color = "#4caf50"
+                self._dns_success_count += 1
+            else:
+                color = "#ff9800"
+                self._dns_success_count += 1
+            self.network_card.set_dns_status(color)
+            if ping_ms is not None:
+                self.network_card.add_ping_result(ping_ms)
+            # Initialize analytics if not already tracking
+            if self._dns_applied_at is None:
+                self._dns_applied_at = time.time()
+                self._dns_success_count = 0
+                self._dns_fail_count = 0
+            self._update_analytics()
+        else:
+            self.network_card.update_info(None, None, None)
+
     def _refresh_dns_info(self):
-        """Refresh and display current DNS configuration."""
+        """Refresh and display current DNS configuration (kept for non-startup use)."""
         adapter = DNSManager.get_current_dns_info()
         if adapter:
             provider_name = self._match_dns_to_provider(adapter.dns_servers)
@@ -991,7 +1102,6 @@ class MainWindow(QMainWindow):
             self._check_dns_status(adapter.dns_servers)
             # Initialize analytics if not already tracking
             if self._dns_applied_at is None:
-                import time
                 self._dns_applied_at = time.time()
                 self._dns_success_count = 0
                 self._dns_fail_count = 0
@@ -1018,11 +1128,25 @@ class MainWindow(QMainWindow):
             self.network_card.add_ping_result(ms)
         self._update_analytics()
 
+    def _tick_uptime(self):
+        """Lightweight 1-second tick: recompute elapsed time and update the label."""
+        if self._dns_applied_at is None:
+            return
+        uptime = int(time.time() - self._dns_applied_at)
+        if uptime < 60:
+            uptime_str = f"{uptime}s"
+        elif uptime < 3600:
+            uptime_str = f"{uptime // 60}m {uptime % 60}s"
+        else:
+            h = uptime // 3600
+            m = (uptime % 3600) // 60
+            uptime_str = f"{h}h {m}m"
+        self.network_card._uptime_value.setText(uptime_str)
+
     def _update_analytics(self):
         """Update the analytics display with current stats."""
         if self._dns_applied_at is None:
             return
-        import time
         uptime = int(time.time() - self._dns_applied_at)
         self.network_card.update_analytics(uptime, self._dns_success_count, self._dns_fail_count)
 
@@ -1038,11 +1162,8 @@ class MainWindow(QMainWindow):
         self.network_card.set_last_change(change_str)
 
     def _periodic_dns_check(self):
-        """Periodically ping the current DNS to update status and analytics."""
-        adapter = DNSManager.get_current_dns_info()
-        if adapter and adapter.dns_servers:
-            self._check_dns_status(adapter.dns_servers)
-        self._update_analytics()
+        """Periodically ping the current DNS to update status and analytics (async)."""
+        self._refresh_dns_info_async()
 
     def _match_dns_to_provider(self, dns_servers):
         """Return provider name if DNS matches a known provider, else 'Custom DNS'."""
@@ -1057,6 +1178,7 @@ class MainWindow(QMainWindow):
 
     def _load_all_providers(self):
         """Load built-in + custom DNS providers into the card."""
+        _t0 = time.perf_counter()
         # Clear existing rows
         self.dns_card.rows.clear()
         while self.dns_card.list_layout.count():
@@ -1072,6 +1194,7 @@ class MainWindow(QMainWindow):
         # Add custom providers from the unified store
         for entry in load_custom_dns():
             self.dns_card.add_provider(entry.name, entry.primary, entry.secondary)
+        _proflog("_load_all_providers", _t0)
 
     def _open_custom_dns_manager(self):
         """Open the Custom DNS Manager dialog."""
@@ -1188,6 +1311,7 @@ class MainWindow(QMainWindow):
         # Disable buttons and show status
         self._set_buttons_enabled(False)
         self.status_label.setText("Applying DNS...")
+        self._dns_op_start = time.perf_counter()
 
         # Create and start worker thread
         self.dns_worker = DNSWorker("set", primary, secondary or "")
@@ -1198,6 +1322,7 @@ class MainWindow(QMainWindow):
         """Handle Default DNS button click - reset to DHCP."""
         self._set_buttons_enabled(False)
         self.status_label.setText("Resetting to Default DNS...")
+        self._dns_op_start = time.perf_counter()
 
         # Create and start worker thread
         self.dns_worker = DNSWorker("reset")
@@ -1208,6 +1333,7 @@ class MainWindow(QMainWindow):
         """Handle Flush DNS button click."""
         self._set_buttons_enabled(False)
         self.status_label.setText("Flushing DNS cache...")
+        self._dns_op_start = time.perf_counter()
 
         # Create and start worker thread
         self.dns_worker = DNSWorker("flush")
@@ -1216,19 +1342,25 @@ class MainWindow(QMainWindow):
 
     def _on_dns_operation_finished(self, success: bool, message: str):
         """Handle DNS operation completion."""
+        elapsed = (time.perf_counter() - getattr(self, '_dns_op_start', time.perf_counter())) * 1000
+        print(f"[PROFILER] DNS operation '{getattr(self.dns_worker, 'operation', '?')}' total (UI thread): {elapsed:.0f}ms success={success}", file=sys.stderr, flush=True)
+
         was_set = success and self.dns_worker and self.dns_worker.operation == "set"
 
         if success:
-            import time
             self._dns_applied_at = time.time()
             self._dns_success_count = 0
             self._dns_fail_count = 0
             self.network_card.set_last_change("just now")
             self._show_success(message)
-            self._refresh_dns_info()
+            # Invalidate adapter cache after DNS change
+            DNSManager.invalidate_cache()
+            self._refresh_dns_info_async()
             self._play_success_sound()
         else:
             self._show_error(message)
+            # Invalidate cache on failure too (adapter may have changed)
+            DNSManager.invalidate_cache()
 
         self._set_buttons_enabled(True)
         self.status_label.setText("")
