@@ -21,12 +21,10 @@ DNS_PROVIDERS = [
     DNSProvider("Alisha", "provider_alisha", "31.14.117.18", "87.107.166.226", category="iran", tags=["anti-sanction"]),
     DNSProvider("Electro", "provider_electro", "78.157.42.104", "78.157.42.106", category="iran", tags=["anti-sanction"]),
     DNSProvider("Begzar", "provider_begzar", "185.55.226.26", "185.55.225.25", category="iran", tags=["anti-sanction"]),
-    DNSProvider("Radar", "provider_radar", "10.10.10.4", "10.10.10.4", category="iran", tags=["anti-sanction"]),
     DNSProvider("403 Online", "provider_403online", "10.10.10.10", "10.10.10.20", category="iran", tags=["anti-sanction"]),
 
     # Google
     DNSProvider("Google", "provider_google", "8.8.8.8", "8.8.4.4", tags=["gaming"]),
-    DNSProvider("Google Family", "provider_google_family", "8.8.8.9", "8.8.4.9", tags=["family"]),
 
     # Cloudflare
     DNSProvider("Cloudflare", "provider_cloudflare", "1.1.1.1", "1.0.0.1", tags=["gaming", "privacy"]),
@@ -48,9 +46,6 @@ DNS_PROVIDERS = [
 
     # NordVPN
     DNSProvider("NordVPN", "provider_nordvpn", "103.86.96.100", "103.86.99.100", tags=["privacy"]),
-
-    # Comodo Secure
-    DNSProvider("Comodo Secure", "provider_comodo", "8.26.56.26", "8.20.247.20", tags=["security"]),
 
     # Level3
     DNSProvider("Level3", "provider_level3", "4.2.2.1", "4.2.2.2", tags=["gaming"]),
@@ -76,27 +71,17 @@ DNS_PROVIDERS = [
     # Hurricane Electric
     DNSProvider("Hurricane Electric", "provider_hurricane", "74.82.42.42", "", tags=["privacy"]),
 
-    # DNSWatch
-    DNSProvider("DNSWatch", "provider_dnswatch", "185.121.177.177", "169.239.202.202", tags=["privacy"]),
-
     # Mullvad
     DNSProvider("Mullvad", "provider_mullvad", "194.242.2.2", "194.242.2.3", tags=["privacy"]),
 
     # NextDNS
     DNSProvider("NextDNS", "provider_nextdns", "45.90.28.0", "45.90.30.0", tags=["adblock", "security"]),
 
-    # UncensoredDNS
-    DNSProvider("UncensoredDNS", "provider_uncensored", "91.239.100.100", "89.233.43.71", tags=["privacy"]),
-
     # HE DNS
     DNSProvider("HE DNS", "provider_he_dns", "74.82.42.42", "", tags=["privacy"]),
 
     # Cisco Umbrella
     DNSProvider("Cisco Umbrella", "provider_cisco", "208.67.222.222", "208.67.220.220", tags=["security"]),
-
-    # Turkish ISPs
-    DNSProvider("Turk Telekom", "provider_turk_telekom", "195.175.254.1", "195.175.254.2", tags=[]),
-    DNSProvider("Turkcell", "provider_turkcell", "212.156.70.6", "212.156.70.14", tags=[]),
 
     # Russian
     DNSProvider("RU Safe", "provider_rusafe", "195.46.39.39", "195.46.39.40", tags=["security"]),
@@ -105,17 +90,6 @@ DNS_PROVIDERS = [
     # Chinese
     DNSProvider("Alibaba DNS", "provider_alibaba", "223.5.5.5", "223.6.6.6", tags=["gaming"]),
     DNSProvider("Tencent DNS", "provider_tencent", "119.29.29.29", "119.28.28.28", tags=["gaming"]),
-    DNSProvider("Baidu DNS", "provider_baidu", "180.76.76.76", "", tags=[]),
-    DNSProvider("CNNIC", "provider_cnnic", "1.2.4.8", "101.226.4.6", tags=[]),
-
-    # Indian
-    DNSProvider("Jio DNS", "provider_jio", "101.2.2.2", "101.2.3.3", tags=[]),
-
-    # Australian
-    DNSProvider("Australia GOV", "provider_australia", "139.130.4.5", "", tags=[]),
-
-    # Brazilian
-    DNSProvider("NIC.BR", "provider_nic_br", "200.160.0.8", "200.160.2.3", tags=[]),
 
     # === DNS servers from DNS Jumper image ===
 
@@ -131,17 +105,11 @@ DNS_PROVIDERS = [
     DNSProvider("Level 3 C", "provider_level3_c", "4.2.2.3", "4.2.2.3", tags=["gaming"]),
     DNSProvider("Level 3 D", "provider_level3_d", "4.2.2.5", "4.2.2.6", tags=["gaming"]),
 
-    # Dyn
-    DNSProvider("Dyn", "provider_dyn", "216.146.35.35", "216.146.36.36", tags=[]),
-
     # Comodo (non-secure)
     DNSProvider("Comodo", "provider_comodo_dns", "156.154.70.22", "156.154.71.22", tags=[]),
 
     # Qwest
     DNSProvider("Qwest", "provider_qwest", "205.171.3.65", "205.171.2.65", tags=[]),
-
-    # UltraDNS
-    DNSProvider("UltraDNS", "provider_ultradns", "204.74.234.1", "204.74.101.1", tags=["security"]),
 
     # UK ISPs
     DNSProvider("Zen Internet", "provider_zen", "212.23.8.1", "212.23.3.1", tags=[]),
@@ -154,20 +122,11 @@ DNS_PROVIDERS = [
     # DNS4EU
     DNSProvider("DNS4EU", "provider_dns4eu", "86.54.11.100", "86.54.11.200", tags=["privacy"]),
 
-    # Sprint
-    DNSProvider("Sprint", "provider_sprint", "204.97.212.10", "204.117.214.10", tags=[]),
-    DNSProvider("Sprintlink", "provider_sprintlink", "199.2.252.10", "204.97.212.10", tags=[]),
-
     # DNS WATCH
     DNSProvider("DNS WATCH", "provider_dnswatch2", "84.200.69.80", "84.200.70.40", tags=["privacy"]),
 
-    # Freenom World
-    DNSProvider("Freenom World", "provider_freenom", "80.80.80.80", "80.80.81.81", tags=["privacy"]),
-
     # FDN (French)
     DNSProvider("FDN", "provider_fdn", "80.67.169.12", "80.67.169.40", tags=["privacy"]),
-
-    # Censurfridns (Denmark) - already exists as UncensoredDNS
 ]
 
 
