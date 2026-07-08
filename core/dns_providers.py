@@ -76,9 +76,6 @@ DNS_PROVIDERS = [
     # Hurricane Electric
     DNSProvider("Hurricane Electric", "provider_hurricane", "74.82.42.42", "", tags=["privacy"]),
 
-    # IBM Quad9
-    DNSProvider("IBM Quad9", "provider_ibm_quad9", "9.9.9.9", "149.112.112.112", tags=["security"]),
-
     # DNSWatch
     DNSProvider("DNSWatch", "provider_dnswatch", "185.121.177.177", "169.239.202.202", tags=["privacy"]),
 

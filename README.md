@@ -117,6 +117,14 @@ dns-jantex/
 └── installer.nsi           # NSIS installer script
 ```
 
+## What's New in v2.7.0
+
+- **Improved error handling** — bare `except Exception` replaced with specific types (`AttributeError`, `OSError`, `TypeError`, `ValueError`) across core modules
+- **Structured logging** — profiling output now uses `logging.debug()` gated behind `DNS_JANTEX_DEBUG_PERF` env var; no more `print()` to stderr in production
+- **Code cleanup** — removed duplicate imports, `__import__` hacks, and unused imports across core modules
+- **Data integrity** — removed duplicate IBM Quad9 DNS provider entry
+- **Overall quality** — zero warnings across full code review
+
 ## What's New in v2.6
 
 - **Startup performance** — DNS info loading moved to background thread; window appears instantly
@@ -127,7 +135,6 @@ dns-jantex/
 - **Proper update icon** — replaced chart icon with arrow-down-circle for "Check for Updates"
 - **Dashboard centering** — network info card values now center-aligned for a cleaner layout
 - **DNS in Use centering** — provider name and status dot centered as a single group
-- **Profiling instrumentation** — all critical paths log timing to stderr for performance analysis
 
 ## What's New in v2.5
 

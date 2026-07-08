@@ -1,10 +1,16 @@
+import logging
+import os
 import re
-import subprocess
+import sys
 import threading
 import time
 from typing import Optional
 from .network_adapter import NetworkAdapterDetector, AdapterInfo
 from .powershell import PowerShellExecutor
+
+logger = logging.getLogger(__name__)
+
+DEBUG_PERF = os.environ.get("DNS_JANTEX_DEBUG_PERF", "").lower() in ("1", "true", "yes")
 
 
 class DNSManager:
@@ -53,7 +59,6 @@ class DNSManager:
     @staticmethod
     def set_dns(primary: str, secondary: str = "", adapter_name: Optional[str] = None) -> tuple[bool, str]:
         """Set DNS servers and flush cache in a single PowerShell call."""
-        import sys
         _t0 = time.perf_counter()
 
         if not DNSManager.validate_dns(primary):
@@ -77,8 +82,8 @@ class DNSManager:
         )
 
         success, output = PowerShellExecutor.execute(ps_cmd)
-        elapsed = (time.perf_counter() - _t0) * 1000
-        print(f"[PROFILER] set_dns total: {elapsed:.0f}ms (iface={iface})", file=sys.stderr, flush=True)
+        if DEBUG_PERF:
+            logger.debug("set_dns total: %.0fms (iface=%s)", (time.perf_counter() - _t0) * 1000, iface)
 
         if not success:
             DNSManager.invalidate_cache()
@@ -92,7 +97,6 @@ class DNSManager:
     @staticmethod
     def reset_to_dhcp(adapter_name: Optional[str] = None) -> tuple[bool, str]:
         """Reset DNS to automatic (DHCP) and flush cache in a single PowerShell call."""
-        import sys
         _t0 = time.perf_counter()
 
         iface, err = DNSManager._get_iface(adapter_name)
@@ -106,8 +110,8 @@ class DNSManager:
         )
 
         success, output = PowerShellExecutor.execute(ps_cmd)
-        elapsed = (time.perf_counter() - _t0) * 1000
-        print(f"[PROFILER] reset_to_dhcp total: {elapsed:.0f}ms (iface={iface})", file=sys.stderr, flush=True)
+        if DEBUG_PERF:
+            logger.debug("reset_to_dhcp total: %.0fms (iface=%s)", (time.perf_counter() - _t0) * 1000, iface)
 
         if not success:
             DNSManager.invalidate_cache()

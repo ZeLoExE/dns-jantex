@@ -2,8 +2,14 @@ import subprocess
 import sys
 import ctypes
 import json
+import logging
+import os
 import re
 from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+DEBUG_PERF = os.environ.get("DNS_JANTEX_DEBUG_PERF", "").lower() in ("1", "true", "yes")
 
 
 class PowerShellExecutor:
@@ -14,7 +20,8 @@ class PowerShellExecutor:
         """Check if the application is running with administrator privileges."""
         try:
             return ctypes.windll.shell32.IsUserAnAdmin() != 0
-        except Exception:
+        except (AttributeError, OSError):
+            logger.warning("Could not determine admin status")
             return False
 
     @staticmethod
@@ -25,7 +32,8 @@ class PowerShellExecutor:
                 None, "runas", sys.executable, " ".join(sys.argv), None, 1
             )
             sys.exit(0)
-        except Exception:
+        except (AttributeError, OSError) as exc:
+            logger.error("UAC elevation failed: %s", exc)
             sys.exit(1)
 
     @staticmethod
@@ -63,8 +71,8 @@ class PowerShellExecutor:
 
             _elapsed = (_time.perf_counter() - _start) * 1000
             _preview = command[:60].replace("\n", " ")
-            import sys as _sys
-            print(f"[PROFILER] PowerShell ({_elapsed:.0f}ms): {_preview}...", file=_sys.stderr, flush=True)
+            if DEBUG_PERF:
+                logger.debug("PowerShell (%.0fms): %s...", _elapsed, _preview)
 
             # PowerShell sometimes returns 0 but has errors in stderr
             if error and "FullyQualifiedErrorId" in error:
@@ -77,12 +85,13 @@ class PowerShellExecutor:
 
         except subprocess.TimeoutExpired:
             _elapsed = (_time.perf_counter() - _start) * 1000
-            print(f"[PROFILER] PowerShell TIMEOUT ({_elapsed:.0f}ms): {command[:60]}", file=__import__('sys').stderr, flush=True)
+            if DEBUG_PERF:
+                logger.debug("PowerShell TIMEOUT (%.0fms): %s", _elapsed, command[:60])
             return False, "Command timed out"
         except FileNotFoundError:
             return False, "PowerShell not found"
-        except Exception as e:
-            return False, str(e)
+        except OSError as exc:
+            return False, f"OS error: {exc}"
 
     @staticmethod
     def execute_json(command: str, timeout: int = 30) -> tuple[bool, Optional[object]]:

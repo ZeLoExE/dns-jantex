@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from typing import Optional
-import re
 from .powershell import PowerShellExecutor
 
 

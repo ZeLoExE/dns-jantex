@@ -6,7 +6,12 @@ import sys
 import os
 import time
 import ctypes
+import logging
 import traceback
+
+logger = logging.getLogger(__name__)
+
+DEBUG_PERF = os.environ.get("DNS_JANTEX_DEBUG_PERF", "").lower() in ("1", "true", "yes")
 
 
 def _setup_crash_log():
@@ -16,12 +21,12 @@ def _setup_crash_log():
     def _excepthook(exc_type, exc_value, exc_tb):
         try:
             tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
-        except Exception:
+        except (TypeError, ValueError):
             tb = repr(exc_value)
         try:
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(f"--- crash ---\n{tb}\n")
-        except Exception:
+        except OSError:
             pass
 
     sys.excepthook = _excepthook
@@ -50,7 +55,8 @@ def is_admin():
     """Check if the application is running with administrator privileges."""
     try:
         return ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
+    except (AttributeError, OSError):
+        logger.warning("Could not determine admin status")
         return False
 
 
@@ -61,7 +67,8 @@ def request_admin():
             None, "runas", sys.executable, " ".join(sys.argv), None, 1
         )
         sys.exit(0)
-    except Exception:
+    except (AttributeError, OSError) as exc:
+        logger.error("UAC elevation failed: %s", exc)
         sys.exit(1)
 
 
@@ -75,26 +82,30 @@ def main():
         request_admin()
         return
 
-    print(f"[PROFILER] Admin check: {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
+    if DEBUG_PERF:
+        logger.debug("Admin check: %.0fms", (time.perf_counter() - _t_start) * 1000)
 
     # Import PySide6 modules
     from PySide6.QtWidgets import QApplication
     from PySide6.QtCore import Qt
-    from PySide6.QtGui import QFont, QIcon
+    from PySide6.QtGui import QIcon
 
-    print(f"[PROFILER] PySide6 import: {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
+    if DEBUG_PERF:
+        logger.debug("PySide6 import: %.0fms", (time.perf_counter() - _t_start) * 1000)
 
     from ui.main_window import MainWindow
     from ui.styles import Fonts
 
-    print(f"[PROFILER] UI module import: {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
+    if DEBUG_PERF:
+        logger.debug("UI module import: %.0fms", (time.perf_counter() - _t_start) * 1000)
 
     # Create application
     app = QApplication(sys.argv)
     app.setApplicationName("DNS Jantex")
     app.setOrganizationName("DNS Jantex")
 
-    print(f"[PROFILER] QApplication created: {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
+    if DEBUG_PERF:
+        logger.debug("QApplication created: %.0fms", (time.perf_counter() - _t_start) * 1000)
 
     # Set application icon
     icon_path = os.path.join(_bundle_dir(), "assets", "icon.ico")
@@ -111,9 +122,11 @@ def main():
 
     # Create and show main window
     window = MainWindow()
-    print(f"[PROFILER] MainWindow created: {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
+    if DEBUG_PERF:
+        logger.debug("MainWindow created: %.0fms", (time.perf_counter() - _t_start) * 1000)
     window.show()
-    print(f"[PROFILER] Window shown (startup complete): {(time.perf_counter() - _t_start) * 1000:.0f}ms", file=sys.stderr, flush=True)
+    if DEBUG_PERF:
+        logger.debug("Window shown (startup complete): %.0fms", (time.perf_counter() - _t_start) * 1000)
 
     # Run application
     sys.exit(app.exec())
