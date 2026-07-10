@@ -117,6 +117,14 @@ dns-jantex/
 └── installer.nsi           # NSIS installer script
 ```
 
+## What's New in v2.8.2
+
+- **Sound effects** — custom chime on Apply/Reset, blip on Flush DNS (plays instantly on click)
+- **Update dialog fix** — full release notes visible with scrollable area and markdown stripping
+- **Update spam fix** — skipped versions remembered in settings to prevent repeated prompts
+- **Theme-aware menu** — all preferences menu widgets adapt to dark/light theme
+- **Menu button fix** — ⋮ button style updates instantly on theme change
+
 ## What's New in v2.7.0
 
 - **Improved error handling** — bare `except Exception` replaced with specific types (`AttributeError`, `OSError`, `TypeError`, `ValueError`) across core modules
