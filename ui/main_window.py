@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout,
     QLabel, QPushButton, QComboBox, QFrame,
     QSystemTrayIcon, QApplication, QSplashScreen, QButtonGroup, QCheckBox,
-    QMenu, QDialog, QProgressBar
+    QMenu, QDialog, QProgressBar, QScrollArea
 )
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize, QPoint
 from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPainter, QAction
@@ -281,13 +281,13 @@ class UpdateDialog(QDialog):
         self.result = False  # True if user clicks Install
 
         self.setWindowTitle("Update Available")
-        self.setFixedSize(420, 320)
+        self.setFixedSize(480, 480)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet(style_sheet.get_dialog_style() if hasattr(style_sheet, 'get_dialog_style') else "")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 20, 24, 20)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
 
         # Title
         title = QLabel("Update Available")
@@ -301,16 +301,38 @@ class UpdateDialog(QDialog):
         ver_label.setStyleSheet(f"color: {style_sheet.text}; background: transparent; font-size: 13px;")
         layout.addWidget(ver_label)
 
-        # Release notes (truncated)
+        # Release notes (scrollable, markdown stripped)
         notes = update_info.release_notes.strip()
         if notes:
-            if len(notes) > 200:
-                notes = notes[:200] + "..."
+            import re
+            # Strip markdown formatting
+            notes = re.sub(r'^#{1,6}\s+', '', notes, flags=re.MULTILINE)  # ### headers
+            notes = re.sub(r'\*\*(.+?)\*\*', r'\1', notes)  # **bold**
+            notes = re.sub(r'\*(.+?)\*', r'\1', notes)  # *italic*
+            notes = re.sub(r'^\s*[-*]\s+', '  •  ', notes, flags=re.MULTILINE)  # - items
+            notes = notes.strip()
+
+            notes_scroll = QScrollArea()
+            notes_scroll.setWidgetResizable(True)
+            notes_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            notes_scroll.setMaximumHeight(200)
+            notes_scroll.setStyleSheet(f"""
+                QScrollArea {{ border: none; background: transparent; }}
+                QScrollBar:vertical {{
+                    background: transparent; width: 6px;
+                }}
+                QScrollBar::handle:vertical {{
+                    background: {style_sheet.border}; border-radius: 3px; min-height: 30px;
+                }}
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+            """)
+
             notes_label = QLabel(notes)
             notes_label.setStyleSheet(f"color: {style_sheet.text_secondary}; background: transparent; font-size: 11px;")
             notes_label.setWordWrap(True)
-            notes_label.setMaximumHeight(60)
-            layout.addWidget(notes_label)
+            notes_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+            notes_scroll.setWidget(notes_label)
+            layout.addWidget(notes_scroll, 1)
 
         # Size info
         if update_info.size_bytes > 0:
