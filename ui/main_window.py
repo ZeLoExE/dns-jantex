@@ -1344,34 +1344,33 @@ class MainWindow(QMainWindow):
             self._show_error(self.t("invalid_dns").format(address="None"))
             return
 
-        # Disable buttons and show status
+        self._play_success_sound()
         self._set_buttons_enabled(False)
         self.status_label.setText("Applying DNS...")
         self._dns_op_start = time.perf_counter()
 
-        # Create and start worker thread
         self.dns_worker = DNSWorker("set", primary, secondary or "")
         self.dns_worker.finished.connect(self._on_dns_operation_finished)
         self.dns_worker.start()
 
     def _on_reset_clicked(self):
         """Handle Default DNS button click - reset to DHCP."""
+        self._play_success_sound()
         self._set_buttons_enabled(False)
         self.status_label.setText("Resetting to Default DNS...")
         self._dns_op_start = time.perf_counter()
 
-        # Create and start worker thread
         self.dns_worker = DNSWorker("reset")
         self.dns_worker.finished.connect(self._on_dns_operation_finished)
         self.dns_worker.start()
 
     def _on_flush_clicked(self):
         """Handle Flush DNS button click."""
+        self._play_flush_sound()
         self._set_buttons_enabled(False)
         self.status_label.setText("Flushing DNS cache...")
         self._dns_op_start = time.perf_counter()
 
-        # Create and start worker thread
         self.dns_worker = DNSWorker("flush")
         self.dns_worker.finished.connect(self._on_dns_operation_finished)
         self.dns_worker.start()
@@ -1389,14 +1388,8 @@ class MainWindow(QMainWindow):
             self._dns_fail_count = 0
             self.network_card.set_last_change("just now")
             self._show_success(message)
-            # Invalidate adapter cache after DNS change
             DNSManager.invalidate_cache()
             self._refresh_dns_info_async()
-            op = getattr(self.dns_worker, 'operation', '')
-            if op == "flush":
-                self._play_flush_sound()
-            else:
-                self._play_success_sound()
         else:
             self._show_error(message)
             # Invalidate cache on failure too (adapter may have changed)
