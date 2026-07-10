@@ -42,6 +42,12 @@
   <em>Dark mode with latency testing</em>
 </p>
 
+<p align="center">
+  <img src="docs/new screenshot.PNG" width="700">
+  <br>
+  <em>Preferences menu with toggle switches and dropdown</em>
+</p>
+
 ## Download
 
 Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jantex/releases).
