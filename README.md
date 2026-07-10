@@ -39,13 +39,7 @@
 <p align="center">
   <img src="docs/screenshot.png" width="700">
   <br>
-  <em>Dark mode with latency testing</em>
-</p>
-
-<p align="center">
-  <img src="docs/new screenshot.PNG" width="700">
-  <br>
-  <em>Preferences menu with toggle switches and dropdown</em>
+  <em>Dark mode with preferences menu</em>
 </p>
 
 ## Download
