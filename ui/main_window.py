@@ -11,11 +11,12 @@ from PySide6.QtWidgets import (
     QSystemTrayIcon, QApplication, QSplashScreen, QButtonGroup, QCheckBox,
     QMenu, QDialog, QProgressBar
 )
-from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize
+from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize, QPoint
 from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPainter, QAction
 
 from ui.styles import StyleSheet, Fonts
 from ui.components import DNSCard, NetworkInfoCard, CustomDNSCard, ActionButton, SuccessDialog
+from ui.animated_menu import AnimatedMenu
 from ui.custom_dns_dialog import CustomDNSManagerDialog
 from core.dns_manager import DNSManager
 from core.network_adapter import NetworkAdapterDetector
@@ -447,6 +448,9 @@ class MainWindow(QMainWindow):
         self._apply_theme()
         _proflog("MainWindow _apply_theme", _t_init)
 
+        # Build the overflow menu
+        self._build_overflow_menu()
+
         # Enable Windows 11 DWM effects (shadow + rounded corners)
         self._setup_dwm()
 
@@ -543,7 +547,7 @@ class MainWindow(QMainWindow):
             "last_provider": self._get_selected_provider_index(),
             "auto_apply": self.settings.get("auto_apply", False),
             "favorites": sorted(self.dns_card.favorites) if self.dns_card else self.settings.get("favorites", []),
-            "auto_flush_dns": self.auto_flush_check.isChecked(),
+            "auto_flush_dns": self.settings.get("auto_flush_dns", False),
             "auto_update_check": self.settings.get("auto_update_check", True),
         }
 
@@ -688,64 +692,14 @@ class MainWindow(QMainWindow):
 
         header_layout.addStretch()
 
-        # Auto-Flush DNS toggle
-        self.auto_flush_check = QCheckBox(" Auto-Flush DNS")
-        self.auto_flush_check.setChecked(self.settings.get("auto_flush_dns", False))
-        self.auto_flush_check.setFixedHeight(40)
-        self.auto_flush_check.setStyleSheet(f"""
-            QCheckBox {{
-                color: {self.style_sheet.text};
-                font-size: 13px;
-                spacing: 8px;
-            }}
-            QCheckBox::indicator {{
-                width: 18px; height: 18px;
-                border-radius: 4px;
-                border: 2px solid {self.style_sheet.border};
-                background: transparent;
-                margin-top: 1px;
-            }}
-            QCheckBox::indicator:checked {{
-                background-color: {self.style_sheet.accent};
-                border-color: {self.style_sheet.accent};
-            }}
-            QCheckBox:hover {{
-                color: {self.style_sheet.accent};
-            }}
-        """)
-        self.auto_flush_check.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.auto_flush_check.stateChanged.connect(self._toggle_auto_flush)
-        header_layout.addWidget(self.auto_flush_check, 0, Qt.AlignmentFlag.AlignVCenter)
-
-        # Theme toggle button with icon
-        self.theme_btn = QPushButton()
-        self.theme_btn.setFixedSize(40, 40)
-        self.theme_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
-        self.theme_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.theme_btn.clicked.connect(self._toggle_theme)
-        self._update_theme_button()
-        header_layout.addWidget(self.theme_btn)
-
-        # Language switch button with icon
-        self.lang_btn = QPushButton()
-        self.lang_btn.setFixedSize(40, 40)
-        self.lang_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
-        self.lang_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.lang_btn.setToolTip("Switch Language (EN/FA)")
-        self.lang_btn.clicked.connect(self._toggle_language)
-        self._update_lang_button()
-        header_layout.addWidget(self.lang_btn)
-
-        # Check for Updates button
-        self.update_btn = QPushButton()
-        self.update_btn.setFixedSize(40, 40)
-        self.update_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
-        self.update_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.update_btn.setToolTip("Check for Updates")
-        self.update_btn.setIcon(self._load_icon("update", self.style_sheet.text))
-        self.update_btn.setIconSize(QSize(20, 20))
-        self.update_btn.clicked.connect(self._on_update_btn_clicked)
-        header_layout.addWidget(self.update_btn)
+        # Menu button (three dots)
+        self.menu_btn = QPushButton("⋮")
+        self.menu_btn.setFixedSize(40, 40)
+        self.menu_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
+        self.menu_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.menu_btn.setToolTip("Menu")
+        self.menu_btn.clicked.connect(self._toggle_menu)
+        header_layout.addWidget(self.menu_btn)
 
         content_layout.addLayout(header_layout)
 
@@ -831,15 +785,10 @@ class MainWindow(QMainWindow):
         self.reset_btn.refresh_theme(self.style_sheet)
         self.flush_btn.refresh_theme(self.style_sheet)
 
-        self.theme_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
-        self.lang_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
-        self.update_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
-        self.update_btn.setIcon(self._load_icon("update", self.style_sheet.text))
         self.title.setStyleSheet(self.style_sheet.get_title_style())
 
-        self._refresh_auto_flush_style()
-        self._update_theme_button()
-        self._update_lang_button()
+        if hasattr(self, 'menu_btn'):
+            self.menu_btn.setStyleSheet(self.style_sheet.get_icon_btn_style())
 
         self.status_label.setStyleSheet(self.style_sheet.get_label_style(secondary=True))
 
@@ -856,52 +805,123 @@ class MainWindow(QMainWindow):
         if self.dns_card.custom_row:
             self.dns_card.custom_row.refresh_theme(self.style_sheet)
 
-    def _update_theme_button(self):
-        """Update the theme toggle button icon."""
-        color = self.style_sheet.text
-        if self.dark_mode:
-            self.theme_btn.setIcon(self._load_icon("sun", color))
-            self.theme_btn.setIconSize(QSize(20, 20))
-            self.theme_btn.setText("")
-            self.theme_btn.setToolTip("Switch to Light Mode")
-        else:
-            self.theme_btn.setIcon(self._load_icon("moon", color))
-            self.theme_btn.setIconSize(QSize(20, 20))
-            self.theme_btn.setText("")
-            self.theme_btn.setToolTip("Switch to Dark Mode")
+    def _build_overflow_menu(self):
+        """Build the AnimatedMenu once and store it."""
+        menu = AnimatedMenu(self.style_sheet, parent=self)
+        icon_color = self.style_sheet.text
 
-    def _update_lang_button(self):
-        """Update the language button icon."""
-        color = self.style_sheet.text
-        self.lang_btn.setIcon(self._load_icon("language", color))
-        self.lang_btn.setIconSize(QSize(20, 20))
-        self.lang_btn.setText("")
-        if self.current_lang == "en":
-            self.lang_btn.setToolTip("Switch to Persian")
-        else:
-            self.lang_btn.setToolTip("Switch to English")
+        # Menu title
+        menu.add_title("PREFERENCES")
 
-    def _toggle_theme(self):
-        """Toggle between dark and light mode."""
-        self.dark_mode = not self.dark_mode
-        self._apply_theme()
+        # Section: MODE & LANG
+        menu.add_section_header("MODE & LANG")
+
+        # Dark Mode toggle
+        self._theme_toggle = menu.add_toggle_row(
+            self._load_icon("moon" if self.dark_mode else "sun", icon_color),
+            "Dark Mode",
+            checked=self.dark_mode
+        )
+        self._theme_toggle.toggle.toggled.connect(self._on_theme_toggle)
+
+        # Language dropdown
+        lang_options = ["English", "فارسی"]
+        current_lang_idx = 0 if self.current_lang == "en" else 1
+        self._lang_dropdown = menu.add_dropdown_row(
+            self._load_icon("language", icon_color),
+            "Language",
+            options=lang_options,
+            current_index=current_lang_idx
+        )
+        self._lang_dropdown.combo.currentIndexChanged.connect(self._on_language_change)
+
+        # Auto Flush DNS
+        self._auto_flush_row = menu.add_checkable_row(
+            self._load_icon("flush", icon_color),
+            "Auto Flush DNS",
+            checked=self.settings.get("auto_flush_dns", False)
+        )
+        self._auto_flush_row.toggled.connect(self._on_auto_flush_toggle)
+
+        menu.add_separator()
+
+        # Check for Updates
+        update_item = menu.add_action(self._load_icon("update", icon_color), "Check for Updates")
+        update_item.clicked.connect(self._on_update_btn_clicked)
+
+        menu.add_separator()
+
+        # About
+        about_item = menu.add_action(self._load_icon("about", icon_color), "About DNS Jantex")
+        about_item.clicked.connect(self._show_about)
+
+        # GitHub
+        github_item = menu.add_action(self._load_icon("github", icon_color), "GitHub Repository")
+        github_item.clicked.connect(self._open_github)
+
+        # Donate
+        donate_item = menu.add_action(self._load_icon("heart", icon_color), "Donate")
+        donate_item.clicked.connect(self._open_donate)
+
+        self._overflow_menu = menu
+
+
+    def _toggle_menu(self):
+        """Toggle the overflow menu open/close."""
+        if self._overflow_menu.isVisible():
+            self._overflow_menu.close_with_animation()
+        else:
+            pos = self.menu_btn.mapToGlobal(QPoint(0, self.menu_btn.height()))
+            self._overflow_menu.popup(pos)
+
+    def _on_auto_flush_toggle(self, checked):
+        """Handle Auto Flush DNS toggle from menu."""
+        self.settings["auto_flush_dns"] = checked
         self._save_settings()
 
-    def _toggle_language(self):
-        """Toggle between English and Persian."""
-        new_lang = "fa" if self.current_lang == "en" else "en"
-        self.current_lang = new_lang
-        is_rtl = (new_lang == "fa")
-
-        if is_rtl:
-            self.setFont(Fonts.get_persian_font())
-        else:
-            self.setFont(Fonts.get_default_font())
-
-        self._update_ui_text()
-        self._update_lang_button()
+    def _on_theme_toggle(self, checked):
+        """Handle Dark Mode toggle switch change."""
+        self.dark_mode = checked
+        self._overflow_menu.hide()
         self._apply_theme()
         self._save_settings()
+        self._rebuild_menu()
+
+    def _on_language_change(self, index):
+        """Handle language dropdown change."""
+        new_lang = "en" if index == 0 else "fa"
+        if new_lang != self.current_lang:
+            self.current_lang = new_lang
+            is_rtl = (new_lang == "fa")
+            if is_rtl:
+                self.setFont(Fonts.get_persian_font())
+            else:
+                self.setFont(Fonts.get_default_font())
+            self._overflow_menu.hide()
+            self._update_ui_text()
+            self._apply_theme()
+            self._save_settings()
+            self._rebuild_menu()
+
+    def _rebuild_menu(self):
+        """Rebuild the menu to update toggle states and text."""
+        self._build_overflow_menu()
+
+    def _show_about(self):
+        """Show the About dialog."""
+        from ui.dialogs.about_dialog import AboutDialog
+        dialog = AboutDialog(self.style_sheet, parent=self)
+        dialog.exec()
+
+    def _open_github(self):
+        """Open GitHub repository in default browser."""
+        import webbrowser
+        webbrowser.open("https://github.com/ZeLoExE/dns-jantex")
+
+    def _open_donate(self):
+        """Open donation page in default browser."""
+        import webbrowser
+        webbrowser.open("https://daramet.com/ZeLoExE")
 
     def _update_ui_text(self):
         """Update all UI text with current language translations."""
@@ -927,8 +947,6 @@ class MainWindow(QMainWindow):
 
         self._update_silent = silent
         self._update_checking = True
-        self.update_btn.setEnabled(False)
-        self.update_btn.setToolTip("Checking...")
 
         self._update_check_worker = UpdateCheckWorker()
         self._update_check_worker.finished.connect(self._on_update_check_done)
@@ -938,8 +956,6 @@ class MainWindow(QMainWindow):
         """Read the worker's result and dispatch on the main thread."""
         worker = self._update_check_worker
         self._update_checking = False
-        self.update_btn.setEnabled(True)
-        self.update_btn.setToolTip("Check for Updates")
 
         if worker.error_msg:
             self._on_update_check_error(worker.error_msg)
@@ -1273,36 +1289,6 @@ class MainWindow(QMainWindow):
         self.settings["favorites"] = favorites
         self._save_settings()
 
-    def _refresh_auto_flush_style(self):
-        """Update the Auto-Flush checkbox to match the current theme."""
-        ss = self.style_sheet
-        self.auto_flush_check.setStyleSheet(f"""
-            QCheckBox {{
-                color: {ss.text};
-                font-size: 13px;
-                spacing: 8px;
-            }}
-            QCheckBox::indicator {{
-                width: 18px; height: 18px;
-                border-radius: 4px;
-                border: 2px solid {ss.border};
-                background: transparent;
-                margin-top: 1px;
-            }}
-            QCheckBox::indicator:checked {{
-                background-color: {ss.accent};
-                border-color: {ss.accent};
-            }}
-            QCheckBox:hover {{
-                color: {ss.accent};
-            }}
-        """)
-
-    def _toggle_auto_flush(self, state):
-        """Handle Auto-Flush DNS toggle change."""
-        self.settings["auto_flush_dns"] = state == Qt.CheckState.Checked.value
-        self._save_settings()
-
     def _auto_flush_after_apply(self):
         """Flush DNS cache automatically after a successful Apply."""
         self.dns_worker = DNSWorker("flush")
@@ -1375,7 +1361,7 @@ class MainWindow(QMainWindow):
         self.dns_worker = None
 
         # Auto-flush DNS after a successful Apply, if enabled
-        if was_set and self.auto_flush_check.isChecked():
+        if was_set and self.settings.get("auto_flush_dns", False):
             self._auto_flush_after_apply()
 
     def _on_ping_clicked(self):
