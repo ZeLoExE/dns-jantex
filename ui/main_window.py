@@ -995,10 +995,30 @@ class MainWindow(QMainWindow):
                 dialog.exec()
             return
 
+        # Skip if user already dismissed or attempted this version
+        skipped = self.settings.get("skipped_version", "")
+        if skipped == info.version:
+            if not self._update_silent:
+                dialog = SuccessDialog(
+                    "No Updates", "You're already using the latest version.",
+                    self.style_sheet, "success", self
+                )
+                dialog.exec()
+            return
+
+        # New version different from previously skipped — clear skip
+        if skipped and skipped != info.version:
+            self.settings["skipped_version"] = ""
+            self._save_settings()
+
         try:
             dialog = UpdateDialog(info, self.style_sheet, parent=self)
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 self._start_update_download(info)
+            else:
+                # User clicked "Later" — remember this version
+                self.settings["skipped_version"] = info.version
+                self._save_settings()
         except Exception as e:
             traceback.print_exc()
 
