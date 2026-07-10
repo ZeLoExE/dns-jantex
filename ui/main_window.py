@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QSystemTrayIcon, QApplication, QSplashScreen, QButtonGroup, QCheckBox,
     QMenu, QDialog, QProgressBar, QScrollArea
 )
-from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize, QPoint
+from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize, QPoint, QUrl
 from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPainter, QAction
 
 from ui.styles import StyleSheet, Fonts
@@ -1392,7 +1392,11 @@ class MainWindow(QMainWindow):
             # Invalidate adapter cache after DNS change
             DNSManager.invalidate_cache()
             self._refresh_dns_info_async()
-            self._play_success_sound()
+            op = getattr(self.dns_worker, 'operation', '')
+            if op == "flush":
+                self._play_flush_sound()
+            else:
+                self._play_success_sound()
         else:
             self._show_error(message)
             # Invalidate cache on failure too (adapter may have changed)
@@ -1490,44 +1494,30 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     def _play_success_sound(self):
-        """Play a soft confirmation chime."""
+        """Play the success chime (apply/reset)."""
+        self._play_sound("success")
+
+    def _play_flush_sound(self):
+        """Play the flush blip."""
+        self._play_sound("flush")
+
+    def _play_sound(self, name: str):
+        """Load and play a wav from assets/sounds/."""
         try:
-            import winsound
-            import wave
-            import struct
-            import io
-            import math
-
-            # Generate a soft two-note chime (C5 -> E5)
-            sample_rate = 22050
-            duration = 0.15
-            volume = 0.25
-
-            notes = [523.25, 659.25]  # C5, E5
-            all_samples = []
-
-            for freq in notes:
-                num_samples = int(sample_rate * duration)
-                for i in range(num_samples):
-                    t = i / sample_rate
-                    # Smooth envelope (fade in/out)
-                    env = math.sin(math.pi * i / num_samples)
-                    sample = int(32767 * volume * env * math.sin(2 * math.pi * freq * t))
-                    all_samples.append(struct.pack('<h', sample))
-
-            # Create WAV in memory
-            wav_buf = io.BytesIO()
-            with wave.open(wav_buf, 'wb') as wf:
-                wf.setnchannels(1)
-                wf.setsampwidth(2)
-                wf.setframerate(sample_rate)
-                wf.writeframes(b''.join(all_samples))
-
-            # Play synchronously
-            wav_buf.seek(0)
-            winsound.PlaySound(wav_buf.read(), winsound.SND_MEMORY | winsound.SND_ASYNC)
+            from PySide6.QtMultimedia import QSoundEffect
+            sound_path = _base_dir() / "assets" / "sounds" / f"{name}.wav"
+            if not sound_path.exists():
+                return
+            effect = QSoundEffect()
+            effect.setSource(QUrl.fromLocalFile(str(sound_path)))
+            effect.setVolume(0.5)
+            effect.play()
+            # Prevent garbage collection
+            if not hasattr(self, '_sound_effects'):
+                self._sound_effects = []
+            self._sound_effects.append(effect)
         except Exception:
-            pass  # Silently ignore sound errors
+            pass
 
     def _show_error(self, message: str):
         """Show error notification."""

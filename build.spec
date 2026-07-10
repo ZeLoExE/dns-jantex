@@ -11,6 +11,7 @@ a = Analysis(
         ('translations/*.json', 'translations'),
         ('assets/*', 'assets'),
         ('assets/icons/*', 'assets/icons'),
+        ('assets/sounds/*', 'assets/sounds'),
         ('VERSION', '.'),
     ],
     hiddenimports=['ui', 'ui.main_window', 'ui.components', 'ui.styles', 'ui.custom_dns_dialog', 'ui.animations', 'core', 'core.dns_manager', 'core.network_adapter', 'core.dns_providers', 'core.custom_dns', 'core.powershell', 'psutil'],
