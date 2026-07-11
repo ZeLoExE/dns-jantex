@@ -15,13 +15,16 @@ from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize, QPoint, QUrl
 from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPainter, QAction
 
 from ui.styles import StyleSheet, Fonts
-from ui.components import DNSCard, NetworkInfoCard, CustomDNSCard, ActionButton, SuccessDialog
+from ui.components import DNSCard, NetworkInfoCard, CustomDNSCard, ActionButton
+from ui.toast import show_toast
 from ui.animated_menu import AnimatedMenu
 from ui.custom_dns_dialog import CustomDNSManagerDialog
 from core.dns_manager import DNSManager
 from core.network_adapter import NetworkAdapterDetector
 from core.dns_providers import DNS_PROVIDERS
 from core.custom_dns import load_custom_dns, add_custom_dns
+from core.network_profiles import load_profiles, match_profile_for_network
+from core.network_monitor import NetworkMonitor
 from core.updater import UpdateChecker, UpdateInfo, download_file
 
 
@@ -463,6 +466,11 @@ class MainWindow(QMainWindow):
         # Update check state
         self._update_checking = False
 
+        # Network profile monitor state
+        self._network_monitor = None
+        self._active_profile_label = None
+        self._profile_dialog_open = False
+
         # Set up UI
         _proflog("MainWindow pre-_setup_ui", _t_init)
         self._setup_ui()
@@ -503,6 +511,9 @@ class MainWindow(QMainWindow):
         # Auto-update check on startup (silent, after 5 seconds)
         if self.settings.get("auto_update_check", True):
             QTimer.singleShot(5000, lambda: self._check_for_updates(silent=True))
+
+        # Start network profile monitor (always runs; auto_switch controls apply behavior)
+        self._start_network_monitor()
 
     # SVG icon cache: (name, color) -> QIcon — avoids re-reading + re-rendering on every call
     _icon_cache: dict[tuple[str, str | None], QIcon] = {}
@@ -571,6 +582,8 @@ class MainWindow(QMainWindow):
             "favorites": sorted(self.dns_card.favorites) if self.dns_card else self.settings.get("favorites", []),
             "auto_flush_dns": self.settings.get("auto_flush_dns", False),
             "auto_update_check": self.settings.get("auto_update_check", True),
+            "auto_switch_profiles": self.settings.get("auto_switch_profiles", False),
+            "profile_ask_before_apply": self.settings.get("profile_ask_before_apply", True),
         }
 
         with open(settings_file, "w", encoding="utf-8") as f:
@@ -771,6 +784,13 @@ class MainWindow(QMainWindow):
 
         content_layout.addLayout(buttons_layout)
 
+        # Active profile indicator (shown when a profile is active)
+        self._active_profile_label = QLabel("")
+        self._active_profile_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._active_profile_label.setStyleSheet(self.style_sheet.get_label_style(secondary=True))
+        self._active_profile_label.setVisible(False)
+        content_layout.addWidget(self._active_profile_label)
+
         # Status bar
         self.status_label = QLabel("")
         self.status_label.setStyleSheet(self.style_sheet.get_label_style(secondary=True))
@@ -814,13 +834,12 @@ class MainWindow(QMainWindow):
 
         self.status_label.setStyleSheet(self.style_sheet.get_label_style(secondary=True))
 
+        if self._active_profile_label:
+            self._active_profile_label.setStyleSheet(self.style_sheet.get_label_style(secondary=True))
+
     def _refresh_dns_card_icons(self):
         """Re-render DNS card button icons with current theme color."""
         color = self.style_sheet.text
-        self.dns_card.sort_btn.setIcon(self._load_icon("sort", color))
-        self.dns_card.sort_btn.setIconSize(QSize(14, 14))
-        self.dns_card.manage_btn.setIcon(self._load_icon("manage", color))
-        self.dns_card.manage_btn.setIconSize(QSize(14, 14))
         for row in self.dns_card.rows:
             row.copy_btn.setIcon(self._load_icon("copy", color))
             row.copy_btn.setIconSize(QSize(16, 16))
@@ -867,6 +886,23 @@ class MainWindow(QMainWindow):
 
         menu.add_separator()
 
+        # Section: NETWORK PROFILES
+        menu.add_section_header("NETWORK PROFILES")
+
+        # Auto-Switch Profiles toggle
+        self._auto_switch_row = menu.add_checkable_row(
+            self._load_icon("network", icon_color),
+            "Auto-Switch Profiles",
+            checked=self.settings.get("auto_switch_profiles", False)
+        )
+        self._auto_switch_row.toggled.connect(self._on_auto_switch_toggled)
+
+        # Manage Profiles action
+        manage_profiles_item = menu.add_action(self._load_icon("manage", icon_color), "Manage Profiles")
+        manage_profiles_item.clicked.connect(self._on_manage_profiles)
+
+        menu.add_separator()
+
         # Check for Updates
         update_item = menu.add_action(self._load_icon("update", icon_color), "Check for Updates")
         update_item.clicked.connect(self._on_update_btn_clicked)
@@ -900,6 +936,245 @@ class MainWindow(QMainWindow):
         """Handle Auto Flush DNS toggle from menu."""
         self.settings["auto_flush_dns"] = checked
         self._save_settings()
+
+    # ── Network Profiles ──────────────────────────────────────────
+
+    def _start_network_monitor(self):
+        """Start the background network profile monitor."""
+        if self._network_monitor and self._network_monitor.isRunning():
+            return
+        self._network_monitor = NetworkMonitor(interval_ms=5000, parent=self)
+        self._network_monitor.network_changed.connect(self._on_network_changed)
+        self._network_monitor.profile_matched.connect(self._on_profile_matched)
+        self._network_monitor.start()
+
+    def _stop_network_monitor(self):
+        """Stop the network profile monitor."""
+        if self._network_monitor:
+            self._network_monitor.stop()
+            self._network_monitor = None
+
+    def _on_auto_switch_toggled(self, checked):
+        """Handle Auto-Switch Profiles toggle from menu."""
+        self.settings["auto_switch_profiles"] = checked
+        self._save_settings()
+
+    def _on_manage_profiles(self):
+        """Open the Network Profile Manager dialog."""
+        from ui.network_profile_dialog import NetworkProfileManagerDialog
+        dialog = NetworkProfileManagerDialog(self.style_sheet, parent=self)
+        dialog.profiles_changed.connect(self._on_profiles_changed)
+        dialog.exec()
+
+    def _on_profiles_changed(self):
+        """Handle changes in network profiles list."""
+        pass  # Monitor picks up changes on next poll
+
+    def _on_network_changed(self, network_id: str, network_type: str):
+        """Handle detected network change."""
+        pass  # Handled by profile_matched
+
+    def _on_profile_matched(self, profile):
+        """Handle a matched network profile.
+
+        Auto Switch ON  → apply silently.
+        Auto Switch OFF → always show confirmation dialog first.
+        """
+        if self._profile_dialog_open:
+            return
+
+        # Re-read the setting live to avoid stale cache
+        auto_switch = self.settings.get("auto_switch_profiles", False)
+        print(f"[PROFILE] Matched: {profile.name} ({profile.network_id}), auto_switch={auto_switch}",
+              file=sys.stderr, flush=True)
+
+        if auto_switch:
+            self._apply_profile(profile)
+        else:
+            self._profile_dialog_open = True
+            try:
+                self._show_profile_confirm_dialog(profile)
+            finally:
+                self._profile_dialog_open = False
+
+    def _show_profile_confirm_dialog(self, profile):
+        """Show confirmation dialog before applying a matched profile."""
+        from PySide6.QtWidgets import QGraphicsDropShadowEffect
+        from PySide6.QtGui import QColor
+
+        dialog = QDialog(self)
+        dialog.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.Dialog
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
+        dialog.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        dialog.setModal(True)
+        dialog.setFixedSize(440, 340)
+        dialog.setStyleSheet("QDialog { background: transparent; }")
+        dialog._result_applied = False
+
+        # Container with rounded corners and shadow
+        container = QFrame()
+        container.setStyleSheet(f"""
+            QFrame {{
+                background-color: {self.style_sheet.card};
+                border: 1px solid {self.style_sheet.border};
+                border-radius: 24px;
+            }}
+        """)
+
+        shadow = QGraphicsDropShadowEffect(container)
+        shadow.setBlurRadius(40)
+        shadow.setOffset(0, 8)
+        shadow.setColor(QColor(0, 0, 0, 80))
+        container.setGraphicsEffect(shadow)
+
+        outer = QVBoxLayout(dialog)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(container)
+
+        v = QVBoxLayout(container)
+        v.setContentsMargins(32, 28, 32, 28)
+        v.setSpacing(0)
+
+        # Icon
+        icon_container = QWidget()
+        icon_container.setFixedSize(68, 68)
+        icon_container.setStyleSheet(f"""
+            background-color: {self.style_sheet.accent};
+            border-radius: 34px;
+        """)
+        icon_label = QLabel(profile.icon, icon_container)
+        icon_label.setFixedSize(68, 68)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_label.setStyleSheet("font-size: 32px; background: transparent; border: none;")
+        v.addWidget(icon_container, 0, Qt.AlignmentFlag.AlignHCenter)
+
+        # Spacer
+        v.addSpacing(16)
+
+        # Title
+        title = QLabel("Network Profile Detected")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet(
+            f"color: {self.style_sheet.text}; font-size: 20px; font-weight: bold; "
+            f"background: transparent; border: none;"
+        )
+        v.addWidget(title)
+
+        # Spacer
+        v.addSpacing(8)
+
+        # Message
+        msg = QLabel(
+            f"{profile.icon}  {profile.name} detected.\n"
+            f"Apply DNS profile ({profile.dns_provider})?"
+        )
+        msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        msg.setWordWrap(True)
+        msg.setStyleSheet(
+            f"color: {self.style_sheet.text_secondary}; font-size: 14px; "
+            f"background: transparent; border: none; line-height: 1.5;"
+        )
+        v.addWidget(msg)
+
+        v.addStretch()
+
+        # Buttons
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(14)
+
+        skip_btn = QPushButton("Skip")
+        skip_btn.setFixedHeight(46)
+        skip_btn.setMinimumWidth(140)
+        skip_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        skip_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {self.style_sheet.text};
+                border: 1px solid {self.style_sheet.border};
+                border-radius: 12px;
+                font-size: 15px;
+            }}
+            QPushButton:hover {{
+                background-color: {self.style_sheet.hover};
+                border-color: {self.style_sheet.text_secondary};
+            }}
+        """)
+        skip_btn.clicked.connect(dialog.reject)
+        btn_row.addWidget(skip_btn)
+
+        apply_btn = QPushButton("Apply")
+        apply_btn.setFixedHeight(46)
+        apply_btn.setMinimumWidth(140)
+        apply_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        apply_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self.style_sheet.accent};
+                color: white;
+                border: none;
+                border-radius: 12px;
+                font-size: 15px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background-color: {self.style_sheet.accent_hover}; }}
+        """)
+
+        def _on_apply():
+            dialog._result_applied = True
+            dialog.accept()
+
+        apply_btn.clicked.connect(_on_apply)
+        btn_row.addWidget(apply_btn)
+
+        v.addLayout(btn_row)
+
+        # Center over parent
+        parent_center = self.frameGeometry().center()
+        dialog.move(
+            parent_center.x() - dialog.width() // 2,
+            parent_center.y() - dialog.height() // 2,
+        )
+
+        dialog.raise_()
+        dialog.activateWindow()
+        dialog.setFocus()
+        dialog.exec()
+
+        if dialog._result_applied:
+            self._apply_profile(profile)
+
+    def _apply_profile(self, profile):
+        """Apply DNS settings from a network profile."""
+        self._set_buttons_enabled(False)
+        self.status_label.setText(f"Applying profile: {profile.name}...")
+        self._dns_op_start = time.perf_counter()
+
+        self.dns_worker = DNSWorker("set", profile.primary_dns, profile.secondary_dns)
+        self.dns_worker.finished.connect(lambda ok, msg: self._on_profile_apply_finished(ok, msg, profile))
+        self.dns_worker.start()
+
+    def _on_profile_apply_finished(self, success, message, profile):
+        """Handle profile apply completion."""
+        self._on_dns_operation_finished(success, message)
+        if success:
+            # Update last_applied timestamp
+            from core.network_profiles import load_profiles, save_profiles
+            import datetime
+            profiles = load_profiles()
+            for p in profiles:
+                if p.id == profile.id:
+                    p.last_applied = datetime.datetime.now().isoformat()
+                    break
+            save_profiles(profiles)
+
+            # Show active profile indicator
+            self._active_profile_label.setText(f"{profile.icon} Active Profile: {profile.name}")
+            self._active_profile_label.setVisible(True)
+
+            # Show profile-specific toast
+            show_toast("Profile Applied", f"{profile.icon} {profile.name}", "profile", self.dark_mode, self)
 
     def _on_theme_toggle(self, checked):
         """Handle Dark Mode toggle switch change."""
@@ -988,22 +1263,14 @@ class MainWindow(QMainWindow):
         """Handle the result of an update check."""
         if info is None:
             if not self._update_silent:
-                dialog = SuccessDialog(
-                    "No Updates", "You're already using the latest version.",
-                    self.style_sheet, "success", self
-                )
-                dialog.exec()
+                show_toast("No Updates", "You're already using the latest version.", "success", self.dark_mode, self)
             return
 
         # Skip if user already dismissed or attempted this version
         skipped = self.settings.get("skipped_version", "")
         if skipped == info.version:
             if not self._update_silent:
-                dialog = SuccessDialog(
-                    "No Updates", "You're already using the latest version.",
-                    self.style_sheet, "success", self
-                )
-                dialog.exec()
+                show_toast("No Updates", "You're already using the latest version.", "success", self.dark_mode, self)
             return
 
         # New version different from previously skipped — clear skip
@@ -1025,12 +1292,7 @@ class MainWindow(QMainWindow):
     def _on_update_check_error(self, error_msg):
         """Handle an update check failure."""
         if not self._update_silent:
-            dialog = SuccessDialog(
-                "Update Check Failed",
-                f"Could not check for updates.\n{error_msg}",
-                self.style_sheet, "error", self
-            )
-            dialog.exec()
+            show_toast("Update Check Failed", f"Could not check for updates. {error_msg}", "error", self.dark_mode, self)
 
     def _start_update_download(self, info: UpdateInfo):
         """Download the installer in background, then prompt to launch updater."""
@@ -1459,12 +1721,11 @@ class MainWindow(QMainWindow):
                     self.dns_card.select_provider(i)
                     break
 
-            self.status_label.setText(f"Smart Connect: {fastest_name} ({fastest_ms:.0f} ms)")
+            show_toast("Smart Connect", f"{fastest_name} ({fastest_ms:.0f} ms)", "smart", self.dark_mode, self)
         else:
-            self.status_label.setText("Smart Connect: no DNS responded")
+            show_toast("Smart Connect", "No DNS responded", "warning", self.dark_mode, self)
 
         self._save_settings()
-        QTimer.singleShot(3000, lambda: self.status_label.setText(""))
 
     def _apply_dns_by_index(self, index: int):
         """Apply DNS by provider index."""
@@ -1482,9 +1743,16 @@ class MainWindow(QMainWindow):
         self.flush_btn.setEnabled(enabled)
 
     def _show_success(self, message: str):
-        """Show success notification."""
-        dialog = SuccessDialog(self.t("success"), message, self.style_sheet, "success", self)
-        dialog.exec()
+        """Show success toast notification."""
+        show_toast("Success", message, "success", self.dark_mode, self)
+
+    def _show_error(self, message: str):
+        """Show error toast notification."""
+        show_toast("Error", message, "error", self.dark_mode, self)
+
+    def _show_warning(self, message: str):
+        """Show warning toast notification."""
+        show_toast("Warning", message, "warning", self.dark_mode, self)
 
     def _play_success_sound(self):
         """Play the success chime (apply/reset)."""
@@ -1512,20 +1780,13 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
-    def _show_error(self, message: str):
-        """Show error notification."""
-        dialog = SuccessDialog(self.t("error"), message, self.style_sheet, "error", self)
-        dialog.exec()
-
-    def _show_warning(self, message: str):
-        """Show warning notification."""
-        dialog = SuccessDialog(self.t("warning"), message, self.style_sheet, "warning", self)
-        dialog.exec()
-
     def closeEvent(self, event):
         """Handle window close event - exit completely, not minimize to tray."""
         # Save settings before closing
         self._save_settings()
+
+        # Stop network profile monitor
+        self._stop_network_monitor()
 
         # Stop ping worker if running
         if self.ping_worker and self.ping_worker.isRunning():

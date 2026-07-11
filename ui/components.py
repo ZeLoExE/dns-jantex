@@ -384,6 +384,39 @@ class CustomDNSRow(QFrame):
             self.secondary_input.setStyleSheet(f"QLineEdit {{ background-color: {ss.card}; color: {ss.text}; border: 1px solid {ss.border}; border-radius: 6px; padding: 6px 10px; font-size: 12px; }} QLineEdit:focus {{ border-color: {ss.accent}; }}")
 
 
+class _HoverIconBtn(QPushButton):
+    """QPushButton that swaps its SVG icon color between normal and hover states."""
+
+    def __init__(self, icon_name: str, normal_color: str, hover_color: str = "#ffffff",
+                 style_sheet: str = "", parent=None):
+        super().__init__(parent)
+        self._icon_name = icon_name
+        self._normal_color = normal_color
+        self._hover_color = hover_color
+        self._hovered = False
+        if style_sheet:
+            self.setStyleSheet(style_sheet)
+        self.setIcon(_load_icon(icon_name, normal_color))
+        self.setIconSize(QSize(14, 14))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def set_colors(self, normal: str, hover: str = "#ffffff"):
+        self._normal_color = normal
+        self._hover_color = hover
+        if not self._hovered:
+            self.setIcon(_load_icon(self._icon_name, normal))
+
+    def enterEvent(self, event):
+        self._hovered = True
+        self.setIcon(_load_icon(self._icon_name, self._hover_color))
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._hovered = False
+        self.setIcon(_load_icon(self._icon_name, self._normal_color))
+        super().leaveEvent(event)
+
+
 class DNSCard(QFrame):
     """DNS settings card with provider list."""
 
@@ -433,11 +466,9 @@ class DNSCard(QFrame):
         title_row.addStretch()
 
         # Manage Custom DNS button
-        self.manage_btn = QPushButton()
-        self.manage_btn.setIcon(_load_icon("manage"))
-        self.manage_btn.setIconSize(QSize(14, 14))
-        self.manage_btn.setText(" Manage DNS")
-        self.manage_btn.setStyleSheet(f"""
+        self.manage_btn = _HoverIconBtn(
+            "manage", self.ss.text_secondary, "#ffffff",
+            f"""
             QPushButton {{
                 background-color: transparent;
                 color: {self.ss.accent};
@@ -452,17 +483,17 @@ class DNSCard(QFrame):
                 color: white;
                 border-color: {self.ss.accent};
             }}
-        """)
-        self.manage_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            """,
+            self
+        )
+        self.manage_btn.setText(" Manage DNS")
         self.manage_btn.clicked.connect(self._on_manage_clicked)
         title_row.addWidget(self.manage_btn)
 
         # Sort button
-        self.sort_btn = QPushButton()
-        self.sort_btn.setIcon(_load_icon("sort"))
-        self.sort_btn.setIconSize(QSize(14, 14))
-        self.sort_btn.setText(" Sort")
-        self.sort_btn.setStyleSheet(f"""
+        self.sort_btn = _HoverIconBtn(
+            "sort", self.ss.text_secondary, self.ss.text,
+            f"""
             QPushButton {{
                 background-color: transparent;
                 color: {self.ss.text_secondary};
@@ -476,18 +507,18 @@ class DNSCard(QFrame):
                 color: {self.ss.text};
                 border-color: {self.ss.accent};
             }}
-        """)
-        self.sort_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            """,
+            self
+        )
+        self.sort_btn.setText(" Sort")
         self.sort_order = None  # None = unsorted, True = ascending, False = descending
         self.sort_btn.clicked.connect(self._toggle_sort)
         title_row.addWidget(self.sort_btn)
 
         # Smart Connect button
-        self.smart_btn = QPushButton()
-        self.smart_btn.setIcon(_load_icon("smart"))
-        self.smart_btn.setIconSize(QSize(14, 14))
-        self.smart_btn.setText(" Smart Connect")
-        self.smart_btn.setStyleSheet(f"""
+        self.smart_btn = _HoverIconBtn(
+            "smart", self.ss.accent, "#ffffff",
+            f"""
             QPushButton {{
                 background-color: transparent;
                 color: {self.ss.accent};
@@ -501,8 +532,10 @@ class DNSCard(QFrame):
                 background-color: {self.ss.accent};
                 color: white;
             }}
-        """)
-        self.smart_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            """,
+            self
+        )
+        self.smart_btn.setText(" Smart Connect")
         self.smart_btn.clicked.connect(self.smart_clicked.emit)
         title_row.addWidget(self.smart_btn)
         v.addLayout(title_row)
@@ -863,6 +896,7 @@ class DNSCard(QFrame):
         self.setStyleSheet(f"QFrame {{ background-color: {ss.card}; border: 1px solid {ss.border}; border-radius: 16px; }}")
 
         # Update manage button
+        self.manage_btn.set_colors(ss.text_secondary, "#ffffff")
         self.manage_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -881,6 +915,7 @@ class DNSCard(QFrame):
         """)
 
         # Update sort button
+        self.sort_btn.set_colors(ss.text_secondary, ss.text)
         self.sort_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -898,7 +933,7 @@ class DNSCard(QFrame):
         """)
 
         # Update smart connect button
-        self.smart_btn.setIcon(_load_icon("smart", ss.accent))
+        self.smart_btn.set_colors(ss.accent, "#ffffff")
         self.smart_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;

@@ -349,8 +349,14 @@ class AnimatedMenu(QWidget):
     def __init__(self, style_sheet, parent=None):
         super().__init__(parent)
         self.ss = style_sheet
-        self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.Tool
+            | Qt.WindowType.WindowStaysOnTopHint
+        )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.setAutoFillBackground(False)
         self.setStyleSheet("background: transparent;")
 
         self._items = []
@@ -363,17 +369,10 @@ class AnimatedMenu(QWidget):
         self.container.setStyleSheet(f"""
             QFrame {{
                 background-color: {self.ss.card};
-                border: 1px solid {self.ss.border};
+                border: 1px solid {self.ss.card};
                 border-radius: 14px;
             }}
         """)
-
-        # Shadow effect
-        shadow = QGraphicsDropShadowEffect(self.container)
-        shadow.setBlurRadius(24)
-        shadow.setOffset(0, 8)
-        shadow.setColor(QColor(0, 0, 0, 60))
-        self.container.setGraphicsEffect(shadow)
 
         self.container_layout = QVBoxLayout(self.container)
         self.container_layout.setContentsMargins(0, 0, 0, 0)
@@ -381,7 +380,6 @@ class AnimatedMenu(QWidget):
 
         self.opacity_effect = QGraphicsOpacityEffect(self.container)
         self.opacity_effect.setOpacity(0.0)
-        self.container.setGraphicsEffect(shadow)
 
     def _setup_animations(self):
         """Set up the slide and fade animations."""
@@ -503,6 +501,11 @@ class AnimatedMenu(QWidget):
             event.accept()
         else:
             super().mousePressEvent(event)
+
+    def focusOutEvent(self, event):
+        """Close menu when it loses focus."""
+        self.close_with_animation()
+        super().focusOutEvent(event)
 
     def paintEvent(self, event):
         pass

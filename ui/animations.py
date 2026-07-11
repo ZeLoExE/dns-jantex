@@ -225,3 +225,17 @@ def animate_scale(widget: QWidget, target_scale: float, duration: int = 150):
     anim.setEasingCurve(QEasingCurve.Type.OutCubic)
     anim.start()
     widget._scale_anim = anim
+
+
+def animate_dialog_in(dialog, duration: int = 180):
+    """Animate a dialog fading in on show. Call from showEvent or after show()."""
+    effect = QGraphicsOpacityEffect(dialog)
+    dialog.setGraphicsEffect(effect)
+
+    anim = QPropertyAnimation(effect, b"opacity")
+    anim.setDuration(duration)
+    anim.setStartValue(0.0)
+    anim.setEndValue(1.0)
+    anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+    anim.start()
+    dialog._dialog_anim = anim

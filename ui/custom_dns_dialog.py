@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 
 from ui.styles import StyleSheet
+from ui.network_profile_dialog import _DialogTitleBar
 from core.custom_dns import (
     load_custom_dns, add_custom_dns, update_custom_dns,
     remove_custom_dns, CustomDNSEntry
@@ -119,6 +120,8 @@ class CustomDNSEditDialog(QDialog):
         self.ss = style_sheet
         self.entry = entry
         self.result_data = None
+        self._dragging = False
+        self._drag_position = None
         self._setup_ui()
 
         if entry:
@@ -128,23 +131,40 @@ class CustomDNSEditDialog(QDialog):
 
     def _setup_ui(self):
         self.setWindowTitle("Edit Custom DNS" if self.entry else "Add Custom DNS")
-        self.setFixedSize(420, 250)
-        self.setStyleSheet(f"""
-            QDialog {{
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setFixedWidth(420)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        container = QFrame()
+        container.setStyleSheet(f"""
+            QFrame {{
                 background-color: {self.ss.bg};
                 border: 1px solid {self.ss.border};
                 border-radius: 12px;
             }}
         """)
+        outer.addWidget(container)
 
-        v = QVBoxLayout(self)
-        v.setContentsMargins(20, 20, 20, 20)
+        cl = QVBoxLayout(container)
+        cl.setContentsMargins(0, 0, 0, 0)
+        cl.setSpacing(0)
+
+        # Title bar
+        title_bar = _DialogTitleBar(
+            "Edit Custom DNS" if self.entry else "Add Custom DNS",
+            self.ss, self
+        )
+        cl.addWidget(title_bar)
+
+        # Content
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        v = QVBoxLayout(content)
+        v.setContentsMargins(24, 16, 24, 20)
         v.setSpacing(12)
-
-        # Title
-        title = QLabel("Edit Custom DNS" if self.entry else "Add Custom DNS")
-        title.setStyleSheet(f"color: {self.ss.text}; font-size: 18px; font-weight: bold; background: transparent; border: none;")
-        v.addWidget(title)
 
         # Name
         name_lbl = QLabel("DNS Name")
@@ -173,12 +193,19 @@ class CustomDNSEditDialog(QDialog):
 
         v.addLayout(dns_row)
 
+        # Separator
+        sep = QFrame()
+        sep.setFixedHeight(1)
+        sep.setStyleSheet(f"background-color: {self.ss.border};")
+        v.addWidget(sep)
+
         # Buttons
         btn_row = QHBoxLayout()
+        btn_row.setContentsMargins(0, 8, 0, 0)
         btn_row.addStretch()
 
         cancel_btn = QPushButton("Cancel")
-        cancel_btn.setFixedSize(85, 34)
+        cancel_btn.setFixedSize(90, 36)
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -194,7 +221,7 @@ class CustomDNSEditDialog(QDialog):
         btn_row.addWidget(cancel_btn)
 
         save_btn = QPushButton("Save")
-        save_btn.setFixedSize(85, 34)
+        save_btn.setFixedSize(90, 36)
         save_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.ss.accent};
@@ -211,8 +238,12 @@ class CustomDNSEditDialog(QDialog):
         btn_row.addWidget(save_btn)
 
         v.addLayout(btn_row)
+        v.addStretch()
+
+        cl.addWidget(content, 1)
 
     def _style_input(self, widget: QLineEdit):
+        widget.setFixedHeight(34)
         widget.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {self.ss.hover};
@@ -239,7 +270,6 @@ class CustomDNSEditDialog(QDialog):
             QMessageBox.warning(self, "Error", "Please enter a Primary DNS address.")
             return
 
-        # Basic IP validation
         import re
         ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
         if not re.match(ip_pattern, primary):
@@ -252,6 +282,26 @@ class CustomDNSEditDialog(QDialog):
         self.result_data = (name, primary, secondary)
         self.accept()
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._dragging = True
+            self._drag_position = event.globalPosition().toPoint() - self.pos()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self._dragging and self._drag_position:
+            self.move(event.globalPosition().toPoint() - self._drag_position)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._dragging = False
+        self._drag_position = None
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        from ui.animations import animate_dialog_in
+        animate_dialog_in(self)
+
 
 class CustomDNSManagerDialog(QDialog):
     """Main dialog for managing custom DNS entries."""
@@ -261,20 +311,42 @@ class CustomDNSManagerDialog(QDialog):
     def __init__(self, style_sheet: StyleSheet, parent=None):
         super().__init__(parent)
         self.ss = style_sheet
+        self._dragging = False
+        self._drag_position = None
         self._setup_ui()
         self._load_entries()
 
     def _setup_ui(self):
-        self.setWindowTitle("Custom DNS Manager")
-        self.setMinimumSize(600, 450)
-        self.setStyleSheet(f"""
-            QDialog {{
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setMinimumSize(650, 480)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        container = QFrame()
+        container.setStyleSheet(f"""
+            QFrame {{
                 background-color: {self.ss.bg};
+                border: 1px solid {self.ss.border};
+                border-radius: 12px;
             }}
         """)
+        outer.addWidget(container)
 
-        v = QVBoxLayout(self)
-        v.setContentsMargins(20, 20, 20, 20)
+        cl = QVBoxLayout(container)
+        cl.setContentsMargins(0, 0, 0, 0)
+        cl.setSpacing(0)
+
+        # Title bar
+        title_bar = _DialogTitleBar("Custom DNS Manager", self.ss, self)
+        cl.addWidget(title_bar)
+
+        # Content
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        v = QVBoxLayout(content)
+        v.setContentsMargins(24, 16, 24, 20)
         v.setSpacing(12)
 
         # Header
@@ -328,35 +400,14 @@ class CustomDNSManagerDialog(QDialog):
         self.list_layout = QVBoxLayout(self.container)
         self.list_layout.setContentsMargins(0, 0, 0, 0)
         self.list_layout.setSpacing(6)
-        self.list_layout.addStretch()
 
         scroll.setWidget(self.container)
         v.addWidget(scroll, 1)
 
-        # Close button
-        close_btn = QPushButton("Close")
-        close_btn.setFixedHeight(36)
-        close_btn.setFixedWidth(100)
-        close_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {self.ss.hover};
-                color: {self.ss.text};
-                border: 1px solid {self.ss.border};
-                border-radius: 7px;
-                font-size: 12px;
-            }}
-            QPushButton:hover {{ background-color: {self.ss.border}; }}
-        """)
-        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        close_btn.clicked.connect(self.accept)
-        btn_row = QHBoxLayout()
-        btn_row.addStretch()
-        btn_row.addWidget(close_btn)
-        v.addLayout(btn_row)
+        cl.addWidget(content, 1)
 
     def _load_entries(self):
         """Load and display all custom DNS entries."""
-        # Clear existing widgets
         while self.list_layout.count():
             item = self.list_layout.takeAt(0)
             if item.widget():
@@ -366,7 +417,7 @@ class CustomDNSManagerDialog(QDialog):
 
         if not entries:
             empty = QLabel("No custom DNS entries yet. Click '+ Add DNS' to create one.")
-            empty.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 12px; padding: 20px; background: transparent; border: none;")
+            empty.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 12px; padding: 30px; background: transparent; border: none;")
             empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.list_layout.addWidget(empty)
         else:
@@ -379,7 +430,6 @@ class CustomDNSManagerDialog(QDialog):
         self.list_layout.addStretch()
 
     def _add_entry(self):
-        """Open dialog to add a new custom DNS entry."""
         dialog = CustomDNSEditDialog(self.ss, parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted and dialog.result_data:
             name, primary, secondary = dialog.result_data
@@ -388,13 +438,11 @@ class CustomDNSManagerDialog(QDialog):
             self.dns_changed.emit()
 
     def _edit_entry(self, entry_id: str):
-        """Open dialog to edit an existing custom DNS entry."""
         entry = None
         for e in load_custom_dns():
             if e.id == entry_id:
                 entry = e
                 break
-
         if not entry:
             return
 
@@ -406,7 +454,26 @@ class CustomDNSManagerDialog(QDialog):
             self.dns_changed.emit()
 
     def _remove_entry(self, entry_id: str):
-        """Remove a custom DNS entry."""
         remove_custom_dns(entry_id)
         self._load_entries()
         self.dns_changed.emit()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._dragging = True
+            self._drag_position = event.globalPosition().toPoint() - self.pos()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self._dragging and self._drag_position:
+            self.move(event.globalPosition().toPoint() - self._drag_position)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._dragging = False
+        self._drag_position = None
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        from ui.animations import animate_dialog_in
+        animate_dialog_in(self)

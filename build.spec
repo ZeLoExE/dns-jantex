@@ -14,7 +14,7 @@ a = Analysis(
         ('assets/sounds/*', 'assets/sounds'),
         ('VERSION', '.'),
     ],
-    hiddenimports=['ui', 'ui.main_window', 'ui.components', 'ui.styles', 'ui.custom_dns_dialog', 'ui.animations', 'core', 'core.dns_manager', 'core.network_adapter', 'core.dns_providers', 'core.custom_dns', 'core.powershell', 'psutil'],
+    hiddenimports=['ui', 'ui.main_window', 'ui.components', 'ui.styles', 'ui.custom_dns_dialog', 'ui.animations', 'ui.animated_menu', 'ui.network_profile_dialog', 'ui.toast', 'core', 'core.dns_manager', 'core.network_adapter', 'core.dns_providers', 'core.custom_dns', 'core.powershell', 'core.network_profiles', 'core.network_monitor', 'psutil'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

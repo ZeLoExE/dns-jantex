@@ -114,10 +114,49 @@ class NetworkAdapterDetector:
             '  if ($dns) { $dns.PrefixOrigin } else { "Unknown" } '
             '} else { "NotFound" }'
         )
-        
+
         success, output = PowerShellExecutor.execute(ps_cmd)
         if not success or not output:
             return False
-            
+
         origin = output.strip().lower()
         return "manual" in origin
+
+    @staticmethod
+    def get_current_wifi_ssid() -> Optional[str]:
+        """Get the current Wi-Fi SSID via netsh. Returns None if not on Wi-Fi."""
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["netsh", "wlan", "show", "interfaces"],
+                capture_output=True, text=True, timeout=10,
+                creationflags=0x08000000  # CREATE_NO_WINDOW
+            )
+            if result.returncode != 0:
+                return None
+            for line in result.stdout.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("SSID") and ":" in stripped:
+                    ssid = stripped.split(":", 1)[1].strip()
+                    if ssid:
+                        return ssid
+            return None
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            return None
+
+    @staticmethod
+    def get_current_network_id() -> tuple[Optional[str], str]:
+        """Return (network_id, network_type) for the current connection.
+
+        For Wi-Fi: returns (SSID, "wifi")
+        For Ethernet: returns (adapter_name, "ethernet")
+        """
+        ssid = NetworkAdapterDetector.get_current_wifi_ssid()
+        if ssid:
+            return ssid, "wifi"
+
+        adapter = NetworkAdapterDetector.get_active_adapter()
+        if adapter:
+            return adapter.name, "ethernet"
+
+        return None, "unknown"
