@@ -17,6 +17,22 @@
 
 ---
 
+## Table of Contents
+
+- [Screenshots](#screenshots)
+- [Download](#download)
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Building from Source](#building-from-source)
+- [Project Structure](#project-structure)
+- [What's New in v3.0.0](#whats-new-in-v300)
+- [Support](#support)
+- [License](#license)
+- [Credits](#credits)
+
 ## Screenshots
 
 <p align="center">
@@ -29,57 +45,105 @@
 
 Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jantex/releases).
 
+## Quick Start
+
+1. Download and run `DNSJantex-Setup.exe` as Administrator
+2. Follow the installation wizard
+3. Launch **DNS Jantex** from your Desktop or Start Menu
+4. Click **Smart Connect** to automatically find the fastest DNS provider
+5. Click **Apply** to switch your DNS
+
+That's it — your DNS is now optimized for speed and privacy.
+
 ## Features
 
 ### DNS Management
-- **70+ DNS providers** — Google, Cloudflare, Quad9, AdGuard, OpenDNS, Norton, Level3, and many more
-- **Smart Connect** — one-click benchmark that auto-selects the fastest provider
-- **Custom DNS presets** — save frequently used manual DNS inputs for quick access
-- **Manage DNS modal** — add, edit, and delete custom DNS entries with a unified data store
-- **One-click apply** — fast DNS switching with instant confirmation
-- **Flush & reset** — clear DNS cache or restore automatic (DHCP) settings
-- **Auto-Flush DNS** — optionally flush DNS cache automatically after every Apply
+
+| Feature | Description |
+|---------|-------------|
+| **70+ DNS providers** | Google, Cloudflare, Quad9, AdGuard, OpenDNS, Norton, Level3, and many more |
+| **Smart Connect** | One-click benchmark that auto-selects the fastest provider |
+| **Custom DNS presets** | Save frequently used manual DNS inputs for quick access |
+| **Manage DNS modal** | Add, edit, and delete custom DNS entries with a unified data store |
+| **One-click apply** | Fast DNS switching with instant confirmation |
+| **Flush & reset** | Clear DNS cache or restore automatic (DHCP) settings |
+| **Auto-Flush DNS** | Optionally flush DNS cache automatically after every Apply |
 
 ### Network Profiles
-- **Profile-based DNS** — create DNS profiles linked to specific Wi-Fi networks or Ethernet adapters
-- **Auto-detection** — detect current Wi-Fi SSID or Ethernet adapter name when creating profiles
-- **Auto-Switch** — automatically apply the correct DNS profile when connecting to a recognized network
-- **Confirmation dialog** — get prompted before applying when Auto-Switch is disabled
-- **Profile icons** — assign custom emoji icons to profiles (🏠 Home, 🎓 School, 🎮 Gaming, 🏢 Office)
+
+| Feature | Description |
+|---------|-------------|
+| **Profile-based DNS** | Create DNS profiles linked to specific Wi-Fi networks or Ethernet adapters |
+| **Auto-detection** | Detect current Wi-Fi SSID or Ethernet adapter name when creating profiles |
+| **Auto-Switch** | Automatically apply the correct DNS profile when connecting to a recognized network |
+| **Confirmation dialog** | Get prompted before applying when Auto-Switch is disabled |
+| **Profile icons** | Assign custom emoji icons to profiles (🏠 Home, 🎓 School, 🎮 Gaming, 🏢 Office) |
 
 ### Monitoring & Analytics
-- **Network Stream graph** — real-time bandwidth monitor showing upload/download speed
-- **Ping Stat chart** — line chart tracking latency history over time
-- **DNS analytics** — live uptime, success rate, and query count displayed in real time
-- **Status indicator** — green/yellow/red dot shows DNS health at a glance
+
+| Feature | Description |
+|---------|-------------|
+| **Network Stream graph** | Real-time bandwidth monitor showing upload/download speed |
+| **Ping Stat chart** | Line chart tracking latency history over time |
+| **DNS analytics** | Live uptime, success rate, and query count displayed in real time |
+| **Status indicator** | Green/yellow/red dot shows DNS health at a glance |
 
 ### User Experience
-- **Toast notifications** — desktop-level notifications that appear at the screen corner, auto-dismiss after 3 seconds
-- **Animated dialogs** — smooth fade-in animations on all dialogs and popups
-- **Hover effects** — icon color transitions on interactive buttons for better visibility
-- **Favorites system** — star your most-used DNS providers to pin them to the top of the list
-- **Tag filters** — filter providers by Gaming, Ad Blocking, Family Safe, Privacy, Security, or Anti-Sanction
-- **Sticky search bar** — search stays accessible as you scroll through the provider list
+
+| Feature | Description |
+|---------|-------------|
+| **Toast notifications** | Desktop-level notifications that appear at the screen corner, auto-dismiss after 3 seconds |
+| **Animated dialogs** | Smooth fade-in animations on all dialogs and popups |
+| **Hover effects** | Icon color transitions on interactive buttons for better visibility |
+| **Favorites system** | Star your most-used DNS providers to pin them to the top of the list |
+| **Tag filters** | Filter providers by Gaming, Ad Blocking, Family Safe, Privacy, Security, or Anti-Sanction |
+| **Sticky search bar** | Search stays accessible as you scroll through the provider list |
 
 ### System & Theme
-- **System tray** — minimize to tray, double-click to restore, right-click context menu
-- **Auto-updater** — checks GitHub Releases for new versions, downloads and installs silently
-- **Dark & light themes** — switch with one click, fully theme-aware UI
-- **English & Persian** — full Farsi language support with RTL layout
-- **Frameless window** — modern custom title bar with native Windows 11 shadow and rounded corners
-- **Installer** — desktop and Start Menu shortcuts included
+
+| Feature | Description |
+|---------|-------------|
+| **System tray** | Minimize to tray, double-click to restore, right-click context menu |
+| **Auto-updater** | Checks GitHub Releases for new versions, downloads and installs silently |
+| **Dark & light themes** | Switch with one click, fully theme-aware UI |
+| **English & Persian** | Full Farsi language support with RTL layout |
+| **Frameless window** | Modern custom title bar with native Windows 11 shadow and rounded corners |
+| **Installer** | Desktop and Start Menu shortcuts included |
 
 ## Requirements
 
-- Windows 10/11
-- Administrator privileges (required to change DNS settings)
+| Requirement | Details |
+|-------------|---------|
+| **Operating System** | Windows 10 (build 1903+) or Windows 11 |
+| **Privileges** | Administrator rights (required to change DNS settings) |
+| **Python** | 3.10+ (only for building from source) |
+| **Dependencies** | psutil (for network bandwidth monitoring) |
 
 ## Installation
 
+### Option 1: Installer (Recommended)
+
 1. Download `DNSJantex-Setup.exe` from [Releases](https://github.com/ZeLoExE/dns-jantex/releases)
-2. Run the installer as Administrator
-3. Follow the setup wizard
-4. Launch DNS Jantex from Desktop or Start Menu
+2. Right-click the installer and select **Run as Administrator**
+3. Follow the setup wizard:
+   - Choose installation directory (default: `C:\Program Files\DNS Jantex`)
+   - Select additional tasks (Desktop shortcut, Start Menu shortcuts)
+4. Click **Install** and wait for completion
+5. Launch DNS Jantex from Desktop or Start Menu
+
+### Option 2: Portable (From Source)
+
+```bash
+# Clone the repository
+git clone https://github.com/ZeLoExE/dns-jantex.git
+cd dns-jantex
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the application
+python main.py
+```
 
 ## Usage
 
@@ -94,13 +158,30 @@ Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jan
 9. Minimize to system tray — app keeps running in the background
 10. Check for updates via the menu (three dots)
 
+### Keyboard Shortcuts
+
+| Action | Shortcut |
+|--------|----------|
+| Minimize to tray | Click minimize button |
+| Open menu | Click three-dot menu button |
+| Copy DNS address | Click copy icon on any provider row |
+
 ## Building from Source
+
+### Prerequisites
+
+- Python 3.10+
+- pip
+- PyInstaller (`pip install pyinstaller`)
+- NSIS 3.0+ (for building the installer)
+
+### Build Steps
 
 ```bash
 # Install dependencies
 pip install -r requirements.txt
 
-# Run directly
+# Run directly (for development)
 python main.py
 
 # Build executables (DNSChanger.exe + Updater.exe)
@@ -109,6 +190,14 @@ build.bat
 # Build installer (requires NSIS)
 makensis installer.nsi
 ```
+
+### Build Output
+
+| Output | Location | Description |
+|--------|----------|-------------|
+| Main app | `dist/DNSChanger/` | Portable application folder |
+| Updater | `dist/Updater.exe` | Standalone updater executable |
+| Installer | `DNSJantex-Setup.exe` | NSIS installer package |
 
 ## Project Structure
 
@@ -149,16 +238,22 @@ dns-jantex/
 ## What's New in v3.0.0
 
 ### Network Profiles
+
 Create DNS profiles linked to specific networks. When you connect to a recognized Wi-Fi network or Ethernet adapter, DNS Jantex can automatically apply the correct DNS settings or prompt you for confirmation.
 
 ### Toast Notifications
+
 Desktop-level notifications that appear at the screen's bottom-right corner. They slide in smoothly, auto-dismiss after 3 seconds, and don't block interaction with the main window.
 
 ### Improved UI
+
 All frameless dialogs now fade in smoothly. Interactive buttons have improved hover effects with icon color transitions. The preferences popup menu has a clean transparent background with proper rounded corners.
 
 ### Better DNS Management
+
 Network profile detection always runs in the background. The Auto Switch setting only controls whether profiles are applied silently or shown with a confirmation dialog, giving you full control.
+
+---
 
 ## Support
 
@@ -168,7 +263,7 @@ If you find DNS Jantex useful, consider supporting the development:
 
 ## License
 
-MIT License - see [LICENSE.txt](LICENSE.txt)
+This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.
 
 ## Credits
 
