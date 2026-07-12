@@ -686,25 +686,32 @@ class MainWindow(QMainWindow):
         """Restore and activate the main window from tray."""
         import ctypes
 
+        # Close any open menus first
+        if hasattr(self, "_overflow_menu") and self._overflow_menu.isVisible():
+            self._overflow_menu.close_with_animation()
+
+        # Hide tray icon BEFORE activating — prevents Windows from showing
+        # the tray context menu when SetForegroundWindow is called
+        if hasattr(self, "tray_icon") and self.tray_icon.isVisible():
+            self.tray_icon.hide()
+
         # Qt restoration
         self.show()
-        self.showNormal()
         self.raise_()
         self.activateWindow()
 
         # Native Windows API for guaranteed foreground
+        # IMPORTANT: Do NOT call SetFocus — it triggers Qt widget focus events
+        # that open the overflow menu or other UI elements
         hwnd = int(self.winId())
         if hwnd:
             user32 = ctypes.windll.user32
-            # Restore if minimized
             if user32.IsIconic(hwnd):
                 user32.ShowWindow(hwnd, 9)  # SW_RESTORE
             else:
                 user32.ShowWindow(hwnd, 5)  # SW_SHOW
-            # Bring to foreground
             user32.SetForegroundWindow(hwnd)
             user32.BringWindowToTop(hwnd)
-            user32.SetFocus(hwnd)
 
     def _exit_from_tray(self):
         """Exit the application completely from tray menu."""
