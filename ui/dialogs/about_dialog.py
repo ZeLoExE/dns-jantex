@@ -109,6 +109,11 @@ class AboutDialog(QDialog):
         license_label.setStyleSheet(f"color: {self.ss.text_secondary}; background: transparent; font-size: 12px;")
         layout.addWidget(license_label)
 
+        # Website
+        website_label = QLabel("Website: dns-jantex.pages.dev")
+        website_label.setStyleSheet(f"color: {self.ss.text_secondary}; background: transparent; font-size: 12px;")
+        layout.addWidget(website_label)
+
         layout.addStretch()
 
         # Button row
@@ -135,6 +140,27 @@ class AboutDialog(QDialog):
         """)
         self.github_btn.clicked.connect(self._open_github)
         btn_layout.addWidget(self.github_btn)
+
+        # Website button
+        self.website_btn = QPushButton("Website")
+        self.website_btn.setFixedHeight(36)
+        self.website_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.website_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self.ss.hover};
+                color: {self.ss.text};
+                border: 1px solid {self.ss.border};
+                border-radius: 8px;
+                padding: 0 20px;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                border-color: {self.ss.accent};
+                background-color: {self.ss.card};
+            }}
+        """)
+        self.website_btn.clicked.connect(self._open_website)
+        btn_layout.addWidget(self.website_btn)
 
         # Donate button
         self.donate_btn = QPushButton("Donate")
@@ -195,6 +221,11 @@ class AboutDialog(QDialog):
         """Open GitHub repository in default browser."""
         import webbrowser
         webbrowser.open("https://github.com/ZeLoExE/dns-jantex")
+
+    def _open_website(self):
+        """Open project website in default browser."""
+        import webbrowser
+        webbrowser.open("https://dns-jantex.pages.dev/")
 
     def _open_donate(self):
         """Open donation page in default browser."""
