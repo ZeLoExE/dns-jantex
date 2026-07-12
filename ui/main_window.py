@@ -961,6 +961,7 @@ class MainWindow(QMainWindow):
 
     def _on_manage_profiles(self):
         """Open the Network Profile Manager dialog."""
+        self._overflow_menu.close_with_animation()
         from ui.network_profile_dialog import NetworkProfileManagerDialog
         dialog = NetworkProfileManagerDialog(self.style_sheet, parent=self)
         dialog.profiles_changed.connect(self._on_profiles_changed)
@@ -1206,17 +1207,20 @@ class MainWindow(QMainWindow):
 
     def _show_about(self):
         """Show the About dialog."""
+        self._overflow_menu.close_with_animation()
         from ui.dialogs.about_dialog import AboutDialog
         dialog = AboutDialog(self.style_sheet, parent=self)
         dialog.exec()
 
     def _open_github(self):
         """Open GitHub repository in default browser."""
+        self._overflow_menu.close_with_animation()
         import webbrowser
         webbrowser.open("https://github.com/ZeLoExE/dns-jantex")
 
     def _open_donate(self):
         """Open donation page in default browser."""
+        self._overflow_menu.close_with_animation()
         import webbrowser
         webbrowser.open("https://daramet.com/ZeLoExE")
 
@@ -1234,6 +1238,7 @@ class MainWindow(QMainWindow):
     # ── Update system ──────────────────────────────────────────────
 
     def _on_update_btn_clicked(self):
+        self._overflow_menu.close_with_animation()
         self._check_for_updates()
 
     def _check_for_updates(self, silent: bool = False):
