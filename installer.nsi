@@ -17,12 +17,12 @@ Unicode True
 ;--------------------------------
 ; Version Info
 ;--------------------------------
-VIProductVersion "3.0.1.0"
+VIProductVersion "3.0.2.0"
 VIAddVersionKey "ProductName" "DNS Jantex"
 VIAddVersionKey "CompanyName" "DNS Jantex"
 VIAddVersionKey "FileDescription" "DNS Jantex Installer"
-VIAddVersionKey "FileVersion" "3.0.1"
-VIAddVersionKey "ProductVersion" "3.0.1"
+VIAddVersionKey "FileVersion" "3.0.2"
+VIAddVersionKey "ProductVersion" "3.0.2"
 VIAddVersionKey "LegalCopyright" "DNS Jantex"
 
 ;--------------------------------
@@ -95,7 +95,7 @@ Section "DNS Jantex (required)" SecMain
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
         "URLUpdateInfo" "https://github.com/ZeLoExE/dns-jantex/releases"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
-        "DisplayVersion" "3.0.1"
+        "DisplayVersion" "3.0.2"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
         "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
