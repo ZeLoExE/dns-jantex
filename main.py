@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 DEBUG_PERF = os.environ.get("DNS_JANTEX_DEBUG_PERF", "").lower() in ("1", "true", "yes")
 
+# Application name for single-instance mutex
+APP_NAME = "DNSJantex"
+
 
 def _setup_crash_log():
     """Install a global exception handler that writes tracebacks to a log file."""
@@ -85,6 +88,22 @@ def main():
     if DEBUG_PERF:
         logger.debug("Admin check: %.0fms", (time.perf_counter() - _t_start) * 1000)
 
+    # Single-instance enforcement
+    from single_instance import SingleInstance
+    si = SingleInstance(APP_NAME)
+    if not si.try_lock():
+        # Another instance is already running — find and restore its window
+        # Try both English and Persian window titles
+        SingleInstance.find_and_restore_window(window_titles=[
+            "DNS Jantex",
+            "DNS Changer",
+            "DNS جنتکس",
+        ])
+        sys.exit(0)
+
+    if DEBUG_PERF:
+        logger.debug("Single-instance check: %.0fms", (time.perf_counter() - _t_start) * 1000)
+
     # Import PySide6 modules
     from PySide6.QtWidgets import QApplication
     from PySide6.QtCore import Qt
@@ -127,6 +146,9 @@ def main():
     window.show()
     if DEBUG_PERF:
         logger.debug("Window shown (startup complete): %.0fms", (time.perf_counter() - _t_start) * 1000)
+
+    # Release mutex on application exit
+    app.aboutToQuit.connect(si.release)
 
     # Run application
     sys.exit(app.exec())
