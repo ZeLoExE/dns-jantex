@@ -105,6 +105,35 @@ class NetworkAdapterDetector:
         return adapters
 
     @staticmethod
+    def is_dns_already_applied(primary_dns: str, secondary_dns: str = "") -> bool:
+        """Check if the adapter's current DNS already matches the profile's DNS.
+
+        Returns True if the current DNS configuration matches (no action needed).
+        Returns False if the DNS is different or if the adapter is on DHCP with custom DNS required.
+        """
+        adapter = NetworkAdapterDetector.get_active_adapter()
+        if not adapter:
+            return False
+
+        current_dns = [d.strip() for d in adapter.dns_servers if d.strip()]
+
+        # If profile has no DNS (DHCP), check if adapter is also on DHCP
+        if not primary_dns:
+            # Profile expects DHCP — if adapter has no DNS servers, it's already applied
+            return len(current_dns) == 0
+
+        # Build expected DNS list
+        expected_dns = [primary_dns.strip()]
+        if secondary_dns and secondary_dns.strip():
+            expected_dns.append(secondary_dns.strip())
+
+        # Compare: check if current DNS matches expected DNS (order-independent)
+        current_set = set(current_dns)
+        expected_set = set(expected_dns)
+
+        return current_set == expected_set
+
+    @staticmethod
     def _check_dns_static(adapter_name: str) -> bool:
         """Check if DNS is manually configured (static) vs DHCP."""
         ps_cmd = (

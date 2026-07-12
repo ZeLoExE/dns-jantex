@@ -978,10 +978,19 @@ class MainWindow(QMainWindow):
     def _on_profile_matched(self, profile):
         """Handle a matched network profile.
 
-        Auto Switch ON  → apply silently.
-        Auto Switch OFF → always show confirmation dialog first.
+        Only prompt or apply if the profile's DNS is different from the current configuration.
+        Auto Switch ON  → apply silently (if DNS differs).
+        Auto Switch OFF → show confirmation dialog (if DNS differs).
+        If DNS is already applied, do nothing.
         """
         if self._profile_dialog_open:
+            return
+
+        # Check if the profile's DNS is already applied
+        from core.network_adapter import NetworkAdapterDetector
+        if NetworkAdapterDetector.is_dns_already_applied(profile.primary_dns, profile.secondary_dns):
+            print(f"[PROFILE] DNS already applied for {profile.name}, skipping.",
+                  file=sys.stderr, flush=True)
             return
 
         # Re-read the setting live to avoid stale cache
