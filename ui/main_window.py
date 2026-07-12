@@ -684,9 +684,27 @@ class MainWindow(QMainWindow):
 
     def _show_from_tray(self):
         """Restore and activate the main window from tray."""
+        import ctypes
+
+        # Qt restoration
+        self.show()
         self.showNormal()
-        self.activateWindow()
         self.raise_()
+        self.activateWindow()
+
+        # Native Windows API for guaranteed foreground
+        hwnd = int(self.winId())
+        if hwnd:
+            user32 = ctypes.windll.user32
+            # Restore if minimized
+            if user32.IsIconic(hwnd):
+                user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+            else:
+                user32.ShowWindow(hwnd, 5)  # SW_SHOW
+            # Bring to foreground
+            user32.SetForegroundWindow(hwnd)
+            user32.BringWindowToTop(hwnd)
+            user32.SetFocus(hwnd)
 
     def _exit_from_tray(self):
         """Exit the application completely from tray menu."""
