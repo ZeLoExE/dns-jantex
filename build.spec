@@ -9,9 +9,10 @@ a = Analysis(
     binaries=[],
     datas=[
         ('translations/*.json', 'translations'),
-        ('assets/*', 'assets'),
-        ('assets/icons/*', 'assets/icons'),
-        ('assets/sounds/*', 'assets/sounds'),
+        ('assets/icon.ico', 'assets'),
+        ('assets/icon.png', 'assets'),
+        ('assets/icons', 'assets/icons'),
+        ('assets/sounds', 'assets/sounds'),
         ('VERSION', '.'),
     ],
     hiddenimports=['ui', 'ui.main_window', 'ui.components', 'ui.styles', 'ui.custom_dns_dialog', 'ui.animations', 'ui.animated_menu', 'ui.network_profile_dialog', 'ui.toast', 'core', 'core.dns_manager', 'core.network_adapter', 'core.dns_providers', 'core.custom_dns', 'core.powershell', 'core.network_profiles', 'core.network_monitor', 'psutil'],
