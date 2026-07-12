@@ -5,7 +5,7 @@
 <h1 align="center">DNS Jantex</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.0.2-6366f1?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-3.0.3-6366f1?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows_10%2F11-0078d4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
   <img src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge" alt="License">
