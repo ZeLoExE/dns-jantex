@@ -17,12 +17,12 @@ Unicode True
 ;--------------------------------
 ; Version Info
 ;--------------------------------
-VIProductVersion "3.0.3.0"
+VIProductVersion "3.0.4.0"
 VIAddVersionKey "ProductName" "DNS Jantex"
 VIAddVersionKey "CompanyName" "DNS Jantex"
 VIAddVersionKey "FileDescription" "DNS Jantex Installer"
-VIAddVersionKey "FileVersion" "3.0.3"
-VIAddVersionKey "ProductVersion" "3.0.3"
+VIAddVersionKey "FileVersion" "3.0.4"
+VIAddVersionKey "ProductVersion" "3.0.4"
 VIAddVersionKey "LegalCopyright" "DNS Jantex"
 
 ;--------------------------------
@@ -62,8 +62,9 @@ Section "DNS Jantex (required)" SecMain
     ; Install main executable
     File "dist\DNSChanger\DNSChanger.exe"
 
-    ; Install updater
+    ; Install updater and the narrowly scoped elevated DNS helper
     File "dist\Updater.exe"
+    File "dist\DNSHelper.exe"
 
     ; Install internal dependencies
     SetOutPath "$INSTDIR\_internal"
@@ -95,7 +96,7 @@ Section "DNS Jantex (required)" SecMain
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
         "URLUpdateInfo" "https://github.com/ZeLoExE/dns-jantex/releases"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
-        "DisplayVersion" "3.0.3"
+        "DisplayVersion" "3.0.4"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
         "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\DNS Jantex" \
@@ -138,6 +139,7 @@ Section "Uninstall"
     ; Remove files
     Delete "$INSTDIR\DNSChanger.exe"
     Delete "$INSTDIR\Updater.exe"
+    Delete "$INSTDIR\DNSHelper.exe"
     Delete "$INSTDIR\icon.ico"
     Delete "$INSTDIR\Uninstall.exe"
     RMDir /r "$INSTDIR\_internal"

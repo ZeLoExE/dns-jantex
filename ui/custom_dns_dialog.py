@@ -5,7 +5,6 @@ from PySide6.QtWidgets import (
     QPushButton, QFrame, QScrollArea, QWidget, QMessageBox
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
 
 from ui.styles import StyleSheet
 from ui.network_profile_dialog import _DialogTitleBar
@@ -13,6 +12,7 @@ from core.custom_dns import (
     load_custom_dns, add_custom_dns, update_custom_dns,
     remove_custom_dns, CustomDNSEntry
 )
+from core.validation import normalize_ipv4
 
 
 class CustomDNSEntryWidget(QFrame):
@@ -181,13 +181,13 @@ class CustomDNSEditDialog(QDialog):
 
         for label_text, attr in [("Primary DNS", "primary_input"), ("Secondary DNS", "secondary_input")]:
             col = QVBoxLayout()
-            l = QLabel(label_text)
-            l.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
+            label = QLabel(label_text)
+            label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
             e = QLineEdit()
             e.setPlaceholderText("e.g., 1.1.1.1" if "Primary" in label_text else "e.g., 1.0.0.1")
             self._style_input(e)
             setattr(self, attr, e)
-            col.addWidget(l)
+            col.addWidget(label)
             col.addWidget(e)
             dns_row.addLayout(col)
 
@@ -270,13 +270,11 @@ class CustomDNSEditDialog(QDialog):
             QMessageBox.warning(self, "Error", "Please enter a Primary DNS address.")
             return
 
-        import re
-        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
-        if not re.match(ip_pattern, primary):
-            QMessageBox.warning(self, "Error", "Invalid Primary DNS address format.")
-            return
-        if secondary and not re.match(ip_pattern, secondary):
-            QMessageBox.warning(self, "Error", "Invalid Secondary DNS address format.")
+        try:
+            primary = normalize_ipv4(primary)
+            secondary = normalize_ipv4(secondary, required=False)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Error", str(exc))
             return
 
         self.result_data = (name, primary, secondary)

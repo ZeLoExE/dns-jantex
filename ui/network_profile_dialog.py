@@ -3,16 +3,16 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QFrame, QScrollArea, QWidget, QRadioButton,
-    QComboBox, QButtonGroup, QCheckBox, QMessageBox, QSizePolicy
+    QComboBox, QButtonGroup, QCheckBox, QMessageBox
 )
-from PySide6.QtCore import Qt, Signal, QSize, QPoint
-from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, Signal
 
 from ui.styles import StyleSheet
 from core.network_profiles import (
     load_profiles, add_profile, update_profile, remove_profile, NetworkProfile
 )
 from core.dns_providers import DNS_PROVIDERS
+from core.validation import normalize_ipv4
 
 
 EMOJI_OPTIONS = ["🌐", "🏠", "🎓", "🎮", "🏢", "📱", "🏥", "✈️", "🚗", "📡"]
@@ -193,15 +193,15 @@ class NetworkProfileRow(QFrame):
     def _update_toggle_style(self):
         if self.profile.enabled:
             self.toggle_btn.setText("ON")
-            self.toggle_btn.setStyleSheet(f"""
-                QPushButton {{
+            self.toggle_btn.setStyleSheet("""
+                QPushButton {
                     background-color: #22c55e;
                     color: white;
                     border: none;
                     border-radius: 13px;
                     font-size: 10px;
                     font-weight: bold;
-                }}
+                }
             """)
         else:
             self.toggle_btn.setText("OFF")
@@ -446,13 +446,13 @@ class NetworkProfileEditDialog(QDialog):
         dns_row.setSpacing(12)
         for label_text, attr in [("Primary DNS", "primary_input"), ("Secondary DNS", "secondary_input")]:
             col = QVBoxLayout()
-            l = QLabel(label_text)
-            l.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
+            label = QLabel(label_text)
+            label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
             e = QLineEdit()
             e.setPlaceholderText("e.g., 1.1.1.1" if "Primary" in label_text else "e.g., 1.0.0.1")
             self._style_input(e)
             setattr(self, attr, e)
-            col.addWidget(l)
+            col.addWidget(label)
             col.addWidget(e)
             dns_row.addLayout(col)
         v.addLayout(dns_row)
@@ -635,13 +635,11 @@ class NetworkProfileEditDialog(QDialog):
             QMessageBox.warning(self, "Error", "Please enter a Primary DNS address.")
             return
 
-        import re
-        ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}$'
-        if not re.match(ip_pattern, primary):
-            QMessageBox.warning(self, "Error", "Invalid Primary DNS address format.")
-            return
-        if secondary and not re.match(ip_pattern, secondary):
-            QMessageBox.warning(self, "Error", "Invalid Secondary DNS address format.")
+        try:
+            primary = normalize_ipv4(primary)
+            secondary = normalize_ipv4(secondary, required=False)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Error", str(exc))
             return
 
         self.result_data = {

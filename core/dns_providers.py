@@ -13,7 +13,7 @@ class DNSProvider:
     tags: list[str] = field(default_factory=list)  # "gaming", "adblock", "family", "privacy", "security", "anti-sanction"
 
 
-# Predefined DNS providers — comprehensive global list
+# Predefined IPv4 DNS providers. Entries are validated by tests for duplicate pairs.
 DNS_PROVIDERS = [
     # Iranian DNS Providers (anti-sanction, bypass filtering)
     DNSProvider("Shecan", "provider_shecan", "178.22.122.100", "185.51.200.2", category="iran", tags=["anti-sanction"]),
@@ -78,14 +78,10 @@ DNS_PROVIDERS = [
     DNSProvider("NextDNS", "provider_nextdns", "45.90.28.0", "45.90.30.0", tags=["adblock", "security"]),
 
     # HE DNS
-    DNSProvider("HE DNS", "provider_he_dns", "74.82.42.42", "", tags=["privacy"]),
 
     # Cisco Umbrella
-    DNSProvider("Cisco Umbrella", "provider_cisco", "208.67.222.222", "208.67.220.220", tags=["security"]),
 
     # Russian
-    DNSProvider("RU Safe", "provider_rusafe", "195.46.39.39", "195.46.39.40", tags=["security"]),
-    DNSProvider("DNSlytics", "provider_dnslytics", "77.88.8.8", "77.88.8.1", tags=[]),
 
     # Chinese
     DNSProvider("Alibaba DNS", "provider_alibaba", "223.5.5.5", "223.6.6.6", tags=["gaming"]),
@@ -102,7 +98,7 @@ DNS_PROVIDERS = [
 
     # Level 3 variants
     DNSProvider("Level 3 A", "provider_level3_a", "209.244.0.3", "209.244.0.4", tags=["gaming"]),
-    DNSProvider("Level 3 C", "provider_level3_c", "4.2.2.3", "4.2.2.3", tags=["gaming"]),
+    DNSProvider("Level 3 C", "provider_level3_c", "4.2.2.3", "4.2.2.4", tags=["gaming"]),
     DNSProvider("Level 3 D", "provider_level3_d", "4.2.2.5", "4.2.2.6", tags=["gaming"]),
 
     # Comodo (non-secure)

@@ -1,0 +1,3 @@
+# Put the 40-character SHA-1 thumbprint of the DNS Jantex Authenticode
+# code-signing certificate on the next line before making a production build.
+# Automatic installation fails closed while this file has no thumbprint.

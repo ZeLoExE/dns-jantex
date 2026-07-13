@@ -1,15 +1,12 @@
 import json
-import os
 import sys
 import time
 import traceback
 import ctypes
 from pathlib import Path
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QBoxLayout,
-    QLabel, QPushButton, QComboBox, QFrame,
-    QSystemTrayIcon, QApplication, QSplashScreen, QButtonGroup, QCheckBox,
-    QMenu, QDialog, QProgressBar, QScrollArea
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
+    QSystemTrayIcon, QApplication, QButtonGroup, QMenu, QDialog, QProgressBar, QScrollArea
 )
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QSize, QPoint, QUrl
 from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPainter, QAction
@@ -20,12 +17,18 @@ from ui.toast import show_toast
 from ui.animated_menu import AnimatedMenu
 from ui.custom_dns_dialog import CustomDNSManagerDialog
 from core.dns_manager import DNSManager
+from core.elevated_client import ElevatedDNSClient
 from core.network_adapter import NetworkAdapterDetector
 from core.dns_providers import DNS_PROVIDERS
 from core.custom_dns import load_custom_dns, add_custom_dns
-from core.network_profiles import load_profiles, match_profile_for_network
 from core.network_monitor import NetworkMonitor
-from core.updater import UpdateChecker, UpdateInfo, download_file
+from core.paths import data_dir
+from core.storage import atomic_write_json, load_json
+from core.validation import normalize_ipv4
+from core.updater import (
+    UpdateInfo, configured_signer_thumbprint, download_file,
+    verify_installer_package,
+)
 
 
 def _proflog(label: str, start: float):
@@ -39,14 +42,6 @@ def _base_dir() -> Path:
     Used for READ-ONLY resources (icons, translations, VERSION)."""
     if getattr(sys, "frozen", False):
         return Path(sys._MEIPASS)
-    return Path(__file__).resolve().parent.parent
-
-
-def _app_dir() -> Path:
-    """Return the directory next to the executable — for WRITABLE data (settings, config).
-    In dev mode this is the same as _base_dir()."""
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
     return Path(__file__).resolve().parent.parent
 
 
@@ -85,7 +80,7 @@ class CustomTitleBar(QWidget):
         layout.addWidget(self.icon_label)
 
         # Title
-        self.title_label = QLabel("DNS Changer")
+        self.title_label = QLabel("DNS Jantex")
         self.title_label.setStyleSheet("font-size: 12px; font-weight: 500; background: transparent; border: none;")
         layout.addWidget(self.title_label)
 
@@ -153,20 +148,28 @@ class PingWorker(QThread):
         import concurrent.futures
 
         def ping_one(args):
-            idx, provider = args
-            if not self._running:
-                return idx, None
-            ms = DNSManager.ping_dns_fast(provider.primary, timeout_ms=1200)
-            return idx, ms
+            from statistics import median
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(self.providers), 20)) as pool:
-            futures = [pool.submit(ping_one, (i, p)) for i, p in enumerate(self.providers)]
+            idx, provider = args
+            samples = []
+            for _ in range(3):
+                if not self._running:
+                    return idx, None
+                latency = DNSManager.ping_dns_fast(provider.primary, timeout_ms=1200)
+                if latency is not None:
+                    samples.append(latency)
+            return idx, float(median(samples)) if samples else None
+
+        # Real UDP DNS queries are cheaper than spawning PowerShell, but a bounded
+        # pool still avoids bursts against providers and local NAT tables.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(self.providers), 12)) as pool:
+            futures = [pool.submit(ping_one, (i, provider)) for i, provider in enumerate(self.providers)]
             for future in concurrent.futures.as_completed(futures):
                 if not self._running:
                     break
                 try:
-                    idx, ms = future.result(timeout=3)
-                    self.result_ready.emit(idx, ms)
+                    idx, latency = future.result()
+                    self.result_ready.emit(idx, latency)
                 except Exception:
                     pass
 
@@ -213,29 +216,28 @@ def _match_dns_to_providers(dns_servers):
 
 
 class DNSWorker(QThread):
-    """Worker thread for DNS operations to keep UI responsive."""
-    finished = Signal(bool, str)  # success, message
+    """Request one allow-listed operation from the elevated DNS helper."""
+    operation_finished = Signal(bool, str)
 
-    def __init__(self, operation: str, primary: str = "", secondary: str = ""):
+    def __init__(self, operation: str, primary: str = "", secondary: str = "",
+                 *, flush_after: bool = False):
         super().__init__()
         self.operation = operation
         self.primary = primary
         self.secondary = secondary
+        self.flush_after = flush_after
 
     def run(self):
         try:
-            if self.operation == "set":
-                success, message = DNSManager.set_dns(self.primary, self.secondary)
-            elif self.operation == "reset":
-                success, message = DNSManager.reset_to_dhcp()
-            elif self.operation == "flush":
-                success, message = DNSManager.flush_dns_cache()
-            else:
-                success, message = False, "Unknown operation"
-
-            self.finished.emit(success, message)
-        except Exception as e:
-            self.finished.emit(False, str(e))
+            success, message = ElevatedDNSClient.execute(
+                self.operation,
+                self.primary,
+                self.secondary,
+                flush_after=self.flush_after,
+            )
+            self.operation_finished.emit(success, message)
+        except Exception as exc:
+            self.operation_finished.emit(False, str(exc))
 
 
 class UpdateCheckWorker(QThread):
@@ -258,17 +260,25 @@ class UpdateCheckWorker(QThread):
 
 
 class DownloadWorker(QThread):
-    """Worker thread for downloading update files."""
-    progress = Signal(int, int)  # bytes_downloaded, total_bytes
+    """Worker thread for downloading one size-pinned update asset."""
+    progress = Signal(int, int)
 
-    def __init__(self, url: str, dest: Path):
+    def __init__(self, url: str, dest: Path, expected_size: int, expected_sha256: str):
         super().__init__()
         self.url = url
         self.dest = dest
+        self.expected_size = expected_size
+        self.expected_sha256 = expected_sha256
         self.success = False
 
     def run(self):
-        self.success = download_file(self.url, self.dest, self._on_progress)
+        self.success = download_file(
+            self.url,
+            self.dest,
+            self._on_progress,
+            expected_size=self.expected_size,
+            expected_sha256=self.expected_sha256,
+        )
 
     def _on_progress(self, downloaded, total):
         self.progress.emit(downloaded, total)
@@ -392,7 +402,8 @@ class UpdateDialog(QDialog):
         self.later_btn.clicked.connect(self._on_later)
         btn_layout.addWidget(self.later_btn)
 
-        self.install_btn = QPushButton("Install Now")
+        install_text = "Install Signed Update" if configured_signer_thumbprint() else "Install Verified Update"
+        self.install_btn = QPushButton(install_text)
         self.install_btn.setFixedHeight(36)
         self.install_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.install_btn.setStyleSheet(f"""
@@ -435,15 +446,14 @@ class MainWindow(QMainWindow):
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.Window
         )
-        self.setWindowTitle("DNS Changer")
+        self.setWindowTitle("DNS Jantex")
         self.setFixedSize(1050, 775)
 
-        # Load translations
+        # Load translations and persisted per-user settings.
         self.translations = self._load_translations()
-        self.current_lang = "en"
-
-        # Load settings
         self.settings = self._load_settings()
+        saved_language = self.settings.get("language", "en")
+        self.current_lang = saved_language if saved_language in {"en", "fa"} else "en"
 
         # Initialize theme
         self.dark_mode = self.settings.get("dark_mode", True)
@@ -475,6 +485,9 @@ class MainWindow(QMainWindow):
         _proflog("MainWindow pre-_setup_ui", _t_init)
         self._setup_ui()
         _proflog("MainWindow _setup_ui", _t_init)
+        if self.current_lang == "fa":
+            self.setFont(Fonts.get_persian_font())
+        self._update_ui_text()
         self._apply_theme()
         _proflog("MainWindow _apply_theme", _t_init)
 
@@ -492,11 +505,11 @@ class MainWindow(QMainWindow):
         self._refresh_dns_info_async()
         _proflog("MainWindow total __init__", _t_init)
 
-        # Auto-apply last selected provider if enabled
+        # Auto-apply by stable provider name, never by a mutable/sorted row index.
         if self.settings.get("auto_apply", False):
-            last_provider = self.settings.get("last_provider", 0)
-            if last_provider >= 0:
-                QTimer.singleShot(500, lambda: self._apply_dns_by_index(last_provider))
+            last_provider_name = self.settings.get("last_provider_name", "")
+            if last_provider_name:
+                QTimer.singleShot(500, lambda: self._apply_dns_by_name(last_provider_name))
 
         # Periodic DNS status check (every 30 seconds)
         self._dns_status_timer = QTimer(self)
@@ -526,7 +539,7 @@ class MainWindow(QMainWindow):
             return cached
 
         from PySide6.QtSvg import QSvgRenderer
-        from PySide6.QtGui import QImage, QPainter, QPixmap
+        from PySide6.QtGui import QImage, QPixmap
         from PySide6.QtCore import QByteArray
         path = _base_dir() / "assets" / "icons" / f"{name}.svg"
         data = path.read_bytes().decode("utf-8")
@@ -558,36 +571,32 @@ class MainWindow(QMainWindow):
         return translations
 
     def _load_settings(self) -> dict:
-        """Load application settings."""
-        settings_file = _app_dir() / "config" / "settings.json"
-        if settings_file.exists():
-            try:
-                with open(settings_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        return {}
+        """Load per-user settings and migrate the old numeric provider index."""
+        settings = load_json(data_dir() / "settings.json", {})
+        if not isinstance(settings, dict):
+            settings = {}
+        if "last_provider_name" not in settings:
+            legacy_index = settings.get("last_provider")
+            if isinstance(legacy_index, int) and 0 <= legacy_index < len(DNS_PROVIDERS):
+                settings["last_provider_name"] = DNS_PROVIDERS[legacy_index].name
+        return settings
 
     def _save_settings(self):
-        """Save application settings."""
-        settings_dir = _app_dir() / "config"
-        settings_dir.mkdir(exist_ok=True)
-        settings_file = settings_dir / "settings.json"
-
+        """Atomically save all persistent settings without dropping update state."""
         settings = {
             "dark_mode": self.dark_mode,
             "language": self.current_lang,
-            "last_provider": self._get_selected_provider_index(),
+            "last_provider_name": self._get_selected_provider_name(),
             "auto_apply": self.settings.get("auto_apply", False),
             "favorites": sorted(self.dns_card.favorites) if self.dns_card else self.settings.get("favorites", []),
             "auto_flush_dns": self.settings.get("auto_flush_dns", False),
             "auto_update_check": self.settings.get("auto_update_check", True),
             "auto_switch_profiles": self.settings.get("auto_switch_profiles", False),
             "profile_ask_before_apply": self.settings.get("profile_ask_before_apply", True),
+            "skipped_version": self.settings.get("skipped_version", ""),
         }
-
-        with open(settings_file, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=2)
+        atomic_write_json(data_dir() / "settings.json", settings)
+        self.settings = settings
 
     def t(self, key: str) -> str:
         """Get translated text for the current language."""
@@ -757,6 +766,9 @@ class MainWindow(QMainWindow):
         self.dns_card = DNSCard(self.style_sheet)
         self.dns_card.favorites = set(self.settings.get("favorites", []))
         self._load_all_providers()
+        saved_provider = self.settings.get("last_provider_name", "")
+        if saved_provider:
+            self.dns_card.select_provider_by_name(saved_provider)
         self.dns_card.provider_changed.connect(self._on_provider_changed)
         self.dns_card.manage_clicked.connect(self._open_custom_dns_manager)
         self.dns_card.smart_clicked.connect(self._on_smart_connect)
@@ -987,7 +999,6 @@ class MainWindow(QMainWindow):
             return
 
         # Check if the profile's DNS is already applied
-        from core.network_adapter import NetworkAdapterDetector
         if NetworkAdapterDetector.is_dns_already_applied(profile.primary_dns, profile.secondary_dns):
             print(f"[PROFILE] DNS already applied for {profile.name}, skipping.",
                   file=sys.stderr, flush=True)
@@ -1010,7 +1021,6 @@ class MainWindow(QMainWindow):
     def _show_profile_confirm_dialog(self, profile):
         """Show confirmation dialog before applying a matched profile."""
         from PySide6.QtWidgets import QGraphicsDropShadowEffect
-        from PySide6.QtGui import QColor
 
         dialog = QDialog(self)
         dialog.setWindowFlags(
@@ -1161,8 +1171,9 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"Applying profile: {profile.name}...")
         self._dns_op_start = time.perf_counter()
 
-        self.dns_worker = DNSWorker("set", profile.primary_dns, profile.secondary_dns)
-        self.dns_worker.finished.connect(lambda ok, msg: self._on_profile_apply_finished(ok, msg, profile))
+        self.dns_worker = DNSWorker("set", profile.primary_dns, profile.secondary_dns, flush_after=self.settings.get("auto_flush_dns", False))
+        self.dns_worker.operation_finished.connect(lambda ok, msg: self._on_profile_apply_finished(ok, msg, profile))
+        self.dns_worker.finished.connect(self._on_dns_worker_stopped)
         self.dns_worker.start()
 
     def _on_profile_apply_finished(self, success, message, profile):
@@ -1239,10 +1250,13 @@ class MainWindow(QMainWindow):
         self.apply_btn.setText(self.t("apply"))
         self.reset_btn.setText(self.t("reset_dhcp"))
         self.flush_btn.setText(self.t("flush_dns"))
+        is_rtl = self.current_lang == "fa"
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft if is_rtl else Qt.LayoutDirection.LeftToRight)
         if hasattr(self, 'dns_card') and self.dns_card:
             self.dns_card.manage_btn.setText(" " + self.t("manage_dns"))
             self.dns_card.sort_btn.setText(" " + self.t("sort"))
             self.dns_card.title_label.setText(self.t("dns_settings"))
+            self.dns_card.set_direction(is_rtl)
 
     # ── Update system ──────────────────────────────────────────────
 
@@ -1300,7 +1314,7 @@ class MainWindow(QMainWindow):
                 # User clicked "Later" — remember this version
                 self.settings["skipped_version"] = info.version
                 self._save_settings()
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
 
     def _on_update_check_error(self, error_msg):
@@ -1309,22 +1323,25 @@ class MainWindow(QMainWindow):
             show_toast("Update Check Failed", f"Could not check for updates. {error_msg}", "error", self.dark_mode, self)
 
     def _start_update_download(self, info: UpdateInfo):
-        """Download the installer in background, then prompt to launch updater."""
+        """Download an installer whose size and SHA-256 came from the release manifest."""
         import tempfile
 
+        if not info.sha256:
+            show_toast("Unsafe Update Blocked", "Release checksum is missing.", "error", self.dark_mode, self)
+            return
+
         self._update_info = info
-        self._update_temp_dir = Path(tempfile.gettempdir()) / "dns_jantex_update"
-        self._update_temp_dir.mkdir(exist_ok=True)
+        self._update_temp_dir = Path(tempfile.mkdtemp(prefix="dns_jantex_update-"))
+        self._update_installer_path = self._update_temp_dir / info.asset_name
 
-        # Determine filename from URL
-        filename = info.download_url.split("/")[-1].split("?")[0]
-        self._update_installer_path = self._update_temp_dir / filename
-
-        self.status_label.setText("Downloading update...")
+        self.status_label.setText("Downloading verified update...")
         self._set_buttons_enabled(False)
-
-        # Download in a thread
-        self._download_worker = DownloadWorker(info.download_url, self._update_installer_path)
+        self._download_worker = DownloadWorker(
+            info.download_url,
+            self._update_installer_path,
+            info.size_bytes,
+            info.sha256,
+        )
         self._download_worker.progress.connect(self._on_download_progress)
         self._download_worker.finished.connect(self._on_download_finished)
         self._download_worker.start()
@@ -1342,7 +1359,20 @@ class MainWindow(QMainWindow):
             self._cleanup_update_files()
             return
 
-        self.status_label.setText("Download complete. Launching updater...")
+        verified, verification_message = verify_installer_package(
+            self._update_installer_path,
+            self._update_info.sha256,
+        )
+        if not verified:
+            import webbrowser
+            self.status_label.setText("Update package verification failed.")
+            show_toast("Unsafe Update Blocked", verification_message, "error", self.dark_mode, self)
+            webbrowser.open(self._update_info.release_url)
+            self._cleanup_update_files()
+            QTimer.singleShot(5000, lambda: self.status_label.setText(""))
+            return
+
+        self.status_label.setText("Update verified. Launching updater...")
         QTimer.singleShot(500, self._launch_updater)
 
     def _launch_updater(self):
@@ -1359,7 +1389,7 @@ class MainWindow(QMainWindow):
 
         if not updater_exe.exists():
             # Try dist directory
-            updater_exe = app_dir.parent / "dist" / "Updater" / "Updater.exe"
+            updater_exe = app_dir / "dist" / "Updater.exe"
 
         if not updater_exe.exists():
             self.status_label.setText("Updater.exe not found.")
@@ -1369,7 +1399,12 @@ class MainWindow(QMainWindow):
 
         # Launch the updater
         subprocess.Popen(
-            [str(updater_exe), str(self._update_installer_path), "DNSChanger.exe"],
+            [
+                str(updater_exe),
+                str(self._update_installer_path),
+                "DNSChanger.exe",
+                self._update_info.sha256,
+            ],
             creationflags=subprocess.DETACHED_PROCESS,
         )
 
@@ -1550,15 +1585,29 @@ class MainWindow(QMainWindow):
         self.dns_card.refresh_theme(self.style_sheet)
 
     def _on_apply_custom_dns(self, primary: str, secondary: str):
-        """Handle Apply Custom DNS button click."""
+        """Validate custom input before requesting UAC."""
+        try:
+            primary = normalize_ipv4(primary)
+            secondary = normalize_ipv4(secondary, required=False)
+        except ValueError as exc:
+            self._show_error(str(exc))
+            return
         self._set_buttons_enabled(False)
         self.status_label.setText("Applying DNS...")
-        self.dns_worker = DNSWorker("set", primary, secondary or "")
-        self.dns_worker.finished.connect(self._on_dns_operation_finished)
+        self._dns_op_start = time.perf_counter()
+        self.dns_worker = DNSWorker("set", primary, secondary, flush_after=self.settings.get("auto_flush_dns", False))
+        self.dns_worker.operation_finished.connect(self._on_dns_operation_finished)
+        self.dns_worker.finished.connect(self._on_dns_worker_stopped)
         self.dns_worker.start()
 
     def _on_save_preset(self, primary: str, secondary: str):
-        """Save a custom DNS pair to the unified custom DNS store."""
+        """Validate and save a custom DNS pair."""
+        try:
+            primary = normalize_ipv4(primary)
+            secondary = normalize_ipv4(secondary, required=False)
+        except ValueError as exc:
+            self._show_error(str(exc))
+            return
         # Reject duplicate primary+secondary pairs
         for entry in load_custom_dns():
             if entry.primary == primary and entry.secondary == secondary:
@@ -1590,28 +1639,20 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"Preset saved: {preset_name}")
         QTimer.singleShot(2000, lambda: self.status_label.setText(""))
 
-    def _get_selected_provider_index(self) -> int:
-        """Get the index of the currently selected provider."""
+    def _get_selected_provider_name(self) -> str:
+        """Return a stable provider identity independent of sorting/filtering."""
         if self.dns_card:
-            for i, row in enumerate(self.dns_card.rows):
+            for row in self.dns_card.rows:
                 if row.radio.isChecked():
-                    return i
-        return 0
+                    return row.name
+        return ""
 
-    def _on_provider_changed(self, index: int):
-        """Handle DNS provider selection change."""
+    def _on_provider_changed(self, provider_name: str):
         self._save_settings()
 
     def _on_favorites_changed(self, favorites: list):
-        """Handle favorites list change."""
         self.settings["favorites"] = favorites
         self._save_settings()
-
-    def _auto_flush_after_apply(self):
-        """Flush DNS cache automatically after a successful Apply."""
-        self.dns_worker = DNSWorker("flush")
-        self.dns_worker.finished.connect(lambda ok, msg: None)
-        self.dns_worker.start()
 
     def _on_apply_clicked(self):
         """Handle Apply button click."""
@@ -1620,35 +1661,35 @@ class MainWindow(QMainWindow):
             self._show_error(self.t("invalid_dns").format(address="None"))
             return
 
-        self._play_success_sound()
         self._set_buttons_enabled(False)
         self.status_label.setText("Applying DNS...")
         self._dns_op_start = time.perf_counter()
 
-        self.dns_worker = DNSWorker("set", primary, secondary or "")
-        self.dns_worker.finished.connect(self._on_dns_operation_finished)
+        self.dns_worker = DNSWorker("set", primary, secondary or "", flush_after=self.settings.get("auto_flush_dns", False))
+        self.dns_worker.operation_finished.connect(self._on_dns_operation_finished)
+        self.dns_worker.finished.connect(self._on_dns_worker_stopped)
         self.dns_worker.start()
 
     def _on_reset_clicked(self):
         """Handle Default DNS button click - reset to DHCP."""
-        self._play_success_sound()
         self._set_buttons_enabled(False)
         self.status_label.setText("Resetting to Default DNS...")
         self._dns_op_start = time.perf_counter()
 
         self.dns_worker = DNSWorker("reset")
-        self.dns_worker.finished.connect(self._on_dns_operation_finished)
+        self.dns_worker.operation_finished.connect(self._on_dns_operation_finished)
+        self.dns_worker.finished.connect(self._on_dns_worker_stopped)
         self.dns_worker.start()
 
     def _on_flush_clicked(self):
         """Handle Flush DNS button click."""
-        self._play_flush_sound()
         self._set_buttons_enabled(False)
         self.status_label.setText("Flushing DNS cache...")
         self._dns_op_start = time.perf_counter()
 
         self.dns_worker = DNSWorker("flush")
-        self.dns_worker.finished.connect(self._on_dns_operation_finished)
+        self.dns_worker.operation_finished.connect(self._on_dns_operation_finished)
+        self.dns_worker.finished.connect(self._on_dns_worker_stopped)
         self.dns_worker.start()
 
     def _on_dns_operation_finished(self, success: bool, message: str):
@@ -1656,7 +1697,7 @@ class MainWindow(QMainWindow):
         elapsed = (time.perf_counter() - getattr(self, '_dns_op_start', time.perf_counter())) * 1000
         print(f"[PROFILER] DNS operation '{getattr(self.dns_worker, 'operation', '?')}' total (UI thread): {elapsed:.0f}ms success={success}", file=sys.stderr, flush=True)
 
-        was_set = success and self.dns_worker and self.dns_worker.operation == "set"
+        operation = self.dns_worker.operation if self.dns_worker else ""
 
         if success:
             self._dns_applied_at = time.time()
@@ -1664,6 +1705,10 @@ class MainWindow(QMainWindow):
             self._dns_fail_count = 0
             self.network_card.set_last_change("just now")
             self._show_success(message)
+            if operation == "flush":
+                self._play_flush_sound()
+            else:
+                self._play_success_sound()
             DNSManager.invalidate_cache()
             self._refresh_dns_info_async()
         else:
@@ -1673,11 +1718,11 @@ class MainWindow(QMainWindow):
 
         self._set_buttons_enabled(True)
         self.status_label.setText("")
-        self.dns_worker = None
 
-        # Auto-flush DNS after a successful Apply, if enabled
-        if was_set and self.settings.get("auto_flush_dns", False):
-            self._auto_flush_after_apply()
+    def _on_dns_worker_stopped(self):
+        worker = self.sender()
+        if self.dns_worker is worker:
+            self.dns_worker = None
 
     def _on_ping_clicked(self):
         """Handle Test Speed & Stability button click."""
@@ -1692,7 +1737,7 @@ class MainWindow(QMainWindow):
     def _on_ping_result(self, index: int, latency):
         """Handle ping result - called for each provider as it finishes."""
         if self.dns_card:
-            self.dns_card.update_latency(index, latency)
+            self.dns_card.update_latency_by_name(DNS_PROVIDERS[index].name, latency)
         if latency is not None and hasattr(self, 'network_card'):
             self.network_card.add_ping_stat_result(latency)
 
@@ -1717,11 +1762,12 @@ class MainWindow(QMainWindow):
     def _on_smart_ping_result(self, index: int, latency):
         if latency is not None:
             self._smart_benchmark_results[index] = latency
-            self.dns_card.update_latency(index, latency)
+            self.dns_card.update_latency_by_name(DNS_PROVIDERS[index].name, latency)
 
     def _on_smart_benchmark_done(self):
         """Select the fastest provider after benchmark completes."""
-        self.ping_worker = None
+        # Keep the QThread object referenced until its run() method has returned;
+        # the next benchmark safely replaces the finished object.
         self.dns_card.smart_btn.setEnabled(True)
 
         if self._smart_benchmark_results:
@@ -1729,11 +1775,7 @@ class MainWindow(QMainWindow):
             fastest_ms = self._smart_benchmark_results[fastest_idx]
             fastest_name = DNS_PROVIDERS[fastest_idx].name
 
-            # Find visible row index for this provider
-            for i, row in enumerate(self.dns_card.rows):
-                if row.name == fastest_name:
-                    self.dns_card.select_provider(i)
-                    break
+            self.dns_card.select_provider_by_name(fastest_name)
 
             show_toast("Smart Connect", f"{fastest_name} ({fastest_ms:.0f} ms)", "smart", self.dark_mode, self)
         else:
@@ -1741,14 +1783,21 @@ class MainWindow(QMainWindow):
 
         self._save_settings()
 
-    def _apply_dns_by_index(self, index: int):
-        """Apply DNS by provider index."""
-        if 0 <= index < len(DNS_PROVIDERS):
-            provider = DNS_PROVIDERS[index]
-            # Run async to avoid blocking UI during startup
-            self.dns_worker = DNSWorker("set", provider.primary, provider.secondary)
-            self.dns_worker.finished.connect(self._on_dns_operation_finished)
-            self.dns_worker.start()
+    def _apply_dns_by_name(self, provider_name: str):
+        """Apply a saved provider by stable name, including custom presets."""
+        row = next((row for row in self.dns_card.rows if row.name == provider_name), None)
+        if not row:
+            return
+        self._dns_op_start = time.perf_counter()
+        self.dns_worker = DNSWorker(
+            "set",
+            row.primary,
+            row.secondary,
+            flush_after=self.settings.get("auto_flush_dns", False),
+        )
+        self.dns_worker.operation_finished.connect(self._on_dns_operation_finished)
+        self.dns_worker.finished.connect(self._on_dns_worker_stopped)
+        self.dns_worker.start()
 
     def _set_buttons_enabled(self, enabled: bool):
         """Enable or disable all action buttons."""
@@ -1795,25 +1844,31 @@ class MainWindow(QMainWindow):
             pass
 
     def closeEvent(self, event):
-        """Handle window close event - exit completely, not minimize to tray."""
-        # Save settings before closing
-        self._save_settings()
+        """Shut down cooperatively; never terminate a thread mid-DNS change."""
+        if self.dns_worker and self.dns_worker.isRunning():
+            event.ignore()
+            self._show_warning("A DNS operation is still in progress. Finish or cancel the UAC prompt first.")
+            return
 
-        # Stop network profile monitor
+        self._save_settings()
         self._stop_network_monitor()
 
-        # Stop ping worker if running
         if self.ping_worker and self.ping_worker.isRunning():
             self.ping_worker.stop()
-            self.ping_worker.wait(1000)
+            if not self.ping_worker.wait(6000):
+                event.ignore()
+                QTimer.singleShot(500, self.close)
+                return
 
-        # Stop DNS worker if running
-        if self.dns_worker and self.dns_worker.isRunning():
-            self.dns_worker.terminate()
-            self.dns_worker.wait(1000)
+        if self._dns_info_worker and self._dns_info_worker.isRunning():
+            if not self._dns_info_worker.wait(5000):
+                event.ignore()
+                QTimer.singleShot(500, self.close)
+                return
 
-        # Hide tray icon before exiting
+        if self.network_card:
+            self.network_card._stop_bandwidth_monitor()
+
         if hasattr(self, 'tray_icon') and self.tray_icon:
             self.tray_icon.hide()
-
         event.accept()

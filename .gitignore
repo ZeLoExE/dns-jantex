@@ -2,6 +2,9 @@
 build/
 dist/
 *.spec
+!build.spec
+!build_updater.spec
+!build_helper.spec
 
 # Python
 __pycache__/
@@ -9,13 +12,17 @@ __pycache__/
 *.pyo
 *.pyd
 *.egg-info/
+.venv/
 
 # Config (user settings)
 config/settings.json
 config/custom_dns.json
+config/network_profiles.json
+*.corrupt-*
 
 # Installer output
 DNSJantex-Setup.exe
+DNSJantex-checksums.json
 
 # OS files
 Thumbs.db
@@ -25,4 +32,5 @@ Desktop.ini
 # IDE
 .vscode/
 .idea/
+.mimocode/
 assets/DNSJantex-Setup (1).exe

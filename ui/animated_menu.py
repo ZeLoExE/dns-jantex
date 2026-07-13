@@ -1,13 +1,11 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QFrame, QGraphicsOpacityEffect, QLabel, QComboBox,
-    QGraphicsDropShadowEffect
+    QFrame, QGraphicsOpacityEffect, QLabel, QComboBox
 )
 from PySide6.QtCore import (
-    Qt, QPropertyAnimation, QEasingCurve, QPoint, QSize, QTimer,
-    QParallelAnimationGroup, Property, QRectF, Signal
+    Qt, QPropertyAnimation, QEasingCurve, QPoint, QSize, QParallelAnimationGroup, Property, QRectF, Signal
 )
-from PySide6.QtGui import QIcon, QPainter, QColor, QPen, QBrush, QFont, QPainterPath, QPixmap
+from PySide6.QtGui import QPainter, QColor, QBrush
 
 
 class ToggleSwitch(QWidget):

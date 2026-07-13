@@ -1,29 +1,24 @@
 @echo off
-REM Build script for DNS Changer application
+setlocal
 
-echo Building DNS Changer...
-echo.
+echo Building DNS Jantex 3.0.4...
 
-REM Check if PyInstaller is installed
-pyinstaller --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Installing PyInstaller...
-    pip install pyinstaller
+where pyinstaller >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: PyInstaller is not installed.
+    echo Run: py -m pip install -r requirements-dev.txt
+    exit /b 1
 )
 
-REM Build the main application
-echo Building DNSChanger.exe...
-pyinstaller build.spec
-
-REM Build the updater
-echo Building Updater.exe...
-pyinstaller build_updater.spec
+pyinstaller --clean --noconfirm build.spec || exit /b 1
+pyinstaller --clean --noconfirm build_updater.spec || exit /b 1
+pyinstaller --clean --noconfirm build_helper.spec || exit /b 1
 
 echo.
-echo Build complete!
+echo Build complete:
 echo   Main app:  dist\DNSChanger\
-echo   Updater:   dist\Updater\Updater.exe
+echo   Updater:   dist\Updater.exe
+echo   Helper:    dist\DNSHelper.exe
 echo.
-echo Copy Updater.exe to the dist\DNSChanger\ folder or project root.
-echo.
-pause
+echo IMPORTANT: Sign all EXEs and the final installer before publishing.
+endlocal

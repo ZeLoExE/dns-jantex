@@ -1,11 +1,9 @@
 """Reusable animation utilities for smooth micro-interactions."""
 
 from PySide6.QtCore import (
-    QPropertyAnimation, QEasingCurve, QParallelAnimationGroup,
-    QSequentialAnimationGroup, QTimer, Property
+    QPropertyAnimation, QEasingCurve, QTimer
 )
 from PySide6.QtWidgets import QGraphicsOpacityEffect, QWidget
-from PySide6.QtGui import QColor
 
 
 def lerp_color(c1: str, c2: str, t: float) -> str:

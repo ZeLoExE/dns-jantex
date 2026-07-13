@@ -3,8 +3,8 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QRadioButton, QButtonGroup,
     QScrollArea, QWidget, QDialog, QGraphicsOpacityEffect
 )
-from PySide6.QtCore import Qt, Signal, QSize, QTimer, QThread, QPropertyAnimation, QEasingCurve, QParallelAnimationGroup
-from PySide6.QtGui import QFont, QColor, QIcon, QPainter, QPen, QBrush
+from PySide6.QtCore import Qt, Signal, QSize, QTimer, QThread, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QColor, QIcon, QPainter, QPen, QBrush
 from typing import Optional
 
 from ui.styles import StyleSheet
@@ -350,8 +350,8 @@ class CustomDNSRow(QFrame):
 
         for label_text, attr in [("Primary DNS", "primary_input"), ("Secondary DNS", "secondary_input")]:
             col = QVBoxLayout()
-            l = QLabel(label_text)
-            l.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
+            label = QLabel(label_text)
+            label.setStyleSheet(f"color: {self.ss.text_secondary}; font-size: 11px; background: transparent; border: none;")
             e = QLineEdit()
             e.setPlaceholderText("e.g., 178.22.122.100" if "Primary" in label_text else "e.g., 185.51.200.2")
             e.setStyleSheet(f"""
@@ -368,7 +368,7 @@ class CustomDNSRow(QFrame):
                 }}
             """)
             setattr(self, attr, e)
-            col.addWidget(l)
+            col.addWidget(label)
             col.addWidget(e)
             inp.addLayout(col)
 
@@ -420,7 +420,7 @@ class _HoverIconBtn(QPushButton):
 class DNSCard(QFrame):
     """DNS settings card with provider list."""
 
-    provider_changed = Signal(int)
+    provider_changed = Signal(str)
     manage_clicked = Signal()
     smart_clicked = Signal()
     favorites_changed = Signal(list)  # list of favorite names
@@ -693,7 +693,7 @@ class DNSCard(QFrame):
         row = ProviderRow(name, primary, secondary, self.ss, len(self.rows),
                           category=category, tags=tags, is_favorite=is_fav)
         self.button_group.addButton(row.radio)
-        row.radio.toggled.connect(lambda checked, i=len(self.rows): self.provider_changed.emit(i))
+        row.radio.toggled.connect(lambda checked, name=name: checked and self.provider_changed.emit(name))
         row.row_clicked.connect(lambda r=row: r.radio.setChecked(True))
         row.favorite_toggled.connect(self._on_favorite_toggled)
         self.rows.append(row)
@@ -705,7 +705,7 @@ class DNSCard(QFrame):
     def add_custom_option(self):
         self.custom_row = CustomDNSRow(self.ss)
         self.button_group.addButton(self.custom_row.radio)
-        self.custom_row.radio.toggled.connect(lambda: self.provider_changed.emit(-1))
+        self.custom_row.radio.toggled.connect(lambda checked: checked and self.provider_changed.emit("__custom__"))
         self.list_layout.addWidget(self.custom_row)
 
     def get_selected_dns(self) -> tuple[Optional[str], Optional[str]]:
@@ -724,9 +724,20 @@ class DNSCard(QFrame):
             # Store latency for sorting
             self.latencies[self.rows[index].name] = latency if latency is not None else 99999
 
+    def update_latency_by_name(self, name: str, latency: Optional[float]):
+        row = next((row for row in self.rows if row.name == name), None)
+        if row:
+            row.set_latency(latency)
+            self.latencies[name] = latency if latency is not None else 99999
+
     def select_provider(self, index: int):
         if 0 <= index < len(self.rows):
             self.rows[index].radio.setChecked(True)
+
+    def select_provider_by_name(self, name: str):
+        row = next((row for row in self.rows if row.name == name), None)
+        if row:
+            row.radio.setChecked(True)
 
     def _on_favorite_toggled(self, name: str):
         if name in self.favorites:
@@ -882,7 +893,7 @@ class DNSCard(QFrame):
         for row in visible_rows:
             self.list_layout.addWidget(row)
             row.show()
-            row.radio.toggled.connect(lambda checked, idx=visible_idx: self.provider_changed.emit(idx))
+            row.radio.toggled.connect(lambda checked, name=row.name: checked and self.provider_changed.emit(name))
             if selected_name and row.name == selected_name:
                 row.radio.setChecked(True)
             visible_idx += 1
@@ -997,7 +1008,6 @@ class BandwidthWorker(QThread):
     def __init__(self, interval_ms=1000):
         super().__init__()
         self.interval_ms = interval_ms
-        self._running = True
 
     def run(self):
         try:
@@ -1008,8 +1018,14 @@ class BandwidthWorker(QThread):
             prev = psutil.net_io_counters()
         except Exception:
             return
-        while self._running:
-            self.msleep(self.interval_ms)
+        while not self.isInterruptionRequested():
+            remaining = self.interval_ms
+            while remaining > 0 and not self.isInterruptionRequested():
+                step = min(remaining, 100)
+                self.msleep(step)
+                remaining -= step
+            if self.isInterruptionRequested():
+                break
             try:
                 curr = psutil.net_io_counters()
                 dt = self.interval_ms / 1000.0
@@ -1022,7 +1038,7 @@ class BandwidthWorker(QThread):
                 pass
 
     def stop(self):
-        self._running = False
+        self.requestInterruption()
 
 
 class NetworkStreamChart(QWidget):
@@ -1272,7 +1288,7 @@ class NetworkInfoCard(QFrame):
         row_a.addWidget(self._ip_card, 1)
         left_col.addLayout(row_a)
 
-        # Row B: Uptime + Data Usage + DNS in Use
+        # Row B: Monitoring time + health checks + DNS in use
         row_b = QHBoxLayout()
         row_b.setSpacing(4)
 
@@ -1289,7 +1305,7 @@ class NetworkInfoCard(QFrame):
         self._uptime_icon.setFixedSize(18, 18)
         self._uptime_icon.setStyleSheet("QPushButton { background: transparent; border: none; }")
         uptime_row.addWidget(self._uptime_icon)
-        self._uptime_title = QLabel("Current Uptime:")
+        self._uptime_title = QLabel("Monitoring Time:")
         self._uptime_title.setStyleSheet(f"color: {self.ss.text_tertiary}; font-size: 10px; background: transparent; border: none;")
         uptime_row.addWidget(self._uptime_title)
         uptime_row.addStretch()
@@ -1300,7 +1316,7 @@ class NetworkInfoCard(QFrame):
         uptime_l.addWidget(self._uptime_value)
         row_b.addWidget(self._uptime_card, 1)
 
-        # Data Usage
+        # Health checks
         self._usage_card = _sub_card(self.ss)
         usage_l = QVBoxLayout(self._usage_card)
         usage_l.setContentsMargins(6, 3, 6, 3)
@@ -1313,7 +1329,7 @@ class NetworkInfoCard(QFrame):
         self._usage_icon.setFixedSize(18, 18)
         self._usage_icon.setStyleSheet("QPushButton { background: transparent; border: none; }")
         usage_row.addWidget(self._usage_icon)
-        self._usage_title = QLabel("Data Usage:")
+        self._usage_title = QLabel("Health Checks:")
         self._usage_title.setStyleSheet(f"color: {self.ss.text_tertiary}; font-size: 10px; background: transparent; border: none;")
         usage_row.addWidget(self._usage_title)
         usage_row.addStretch()
@@ -1507,7 +1523,7 @@ class NetworkInfoCard(QFrame):
         self._uptime_value.setText(uptime_str)
 
         total = success_count + fail_count
-        self._queries_value.setText(f"{total} Queries")
+        self._queries_value.setText(f"{total} Checks")
 
     def set_last_change(self, text: str):
         self._last_change.setText(f"Last Change: {text}")
@@ -1541,7 +1557,7 @@ class NetworkInfoCard(QFrame):
         self._uptime_title.setStyleSheet(f"color: {ss.text_tertiary}; font-size: 10px; background: transparent; border: none;")
         self._uptime_value.setStyleSheet(f"color: {ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
 
-        # Data Usage card
+        # Health checks card
         self._usage_icon.setIcon(_load_icon("chart", ss.text_secondary))
         self._usage_title.setStyleSheet(f"color: {ss.text_tertiary}; font-size: 10px; background: transparent; border: none;")
         self._queries_value.setStyleSheet(f"color: {ss.text}; font-size: 16px; font-weight: bold; background: transparent; border: none;")
@@ -1900,21 +1916,21 @@ class SuccessDialog(QDialog):
 
     def _update_container_style(self):
         if self.ss.dark_mode:
-            self.container.setStyleSheet(f"""
-                QFrame#dialogContainer {{
+            self.container.setStyleSheet("""
+                QFrame#dialogContainer {
                     background-color: rgba(24, 27, 35, 240);
                     border: 1px solid rgba(255, 255, 255, 0.08);
                     border-radius: 16px;
-                }}
+                }
             """)
         else:
-            self.container.setStyleSheet(f"""
-                QFrame#dialogContainer {{
+            self.container.setStyleSheet("""
+                QFrame#dialogContainer {
                     background-color: rgba(255, 255, 255, 245);
                     border: 1px solid rgba(0, 0, 0, 0.06);
                     border-radius: 16px;
                     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-                }}
+                }
             """)
 
     def _get_icon_style(self) -> str:

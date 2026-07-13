@@ -5,7 +5,7 @@
 <h1 align="center">DNS Jantex</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.0.3-6366f1?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/version-3.0.4-6366f1?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows_10%2F11-0078d4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
   <img src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge" alt="License">
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  A modern Windows DNS management app with 70+ providers, network profiles, Smart Connect, toast notifications, system tray, auto-updater, and Persian support.
+  A modern Windows DNS management app with 45+ IPv4 providers, network profiles, real DNS-query benchmarking, a SHA-256-verified updater, and Persian support.
 </p>
 
 ---
@@ -33,8 +33,8 @@ Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jan
 ## Features
 
 ### DNS Management
-- **70+ DNS providers** — Google, Cloudflare, Quad9, AdGuard, OpenDNS, Norton, Level3, and many more
-- **Smart Connect** — one-click benchmark that auto-selects the fastest provider
+- **45+ DNS providers** — Google, Cloudflare, Quad9, AdGuard, OpenDNS, Norton, Level3, and many more
+- **Smart Connect** — benchmarks real UDP DNS queries (three samples/provider) and selects the lowest median latency
 - **Custom DNS presets** — save frequently used manual DNS inputs for quick access
 - **Manage DNS modal** — add, edit, and delete custom DNS entries with a unified data store
 - **One-click apply** — fast DNS switching with instant confirmation
@@ -51,7 +51,7 @@ Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jan
 ### Monitoring & Analytics
 - **Network Stream graph** — real-time bandwidth monitor showing upload/download speed
 - **Ping Stat chart** — line chart tracking latency history over time
-- **DNS analytics** — live uptime, success rate, and query count displayed in real time
+- **DNS health analytics** — monitoring time, successful/failed health checks, and latency history
 - **Status indicator** — green/yellow/red dot shows DNS health at a glance
 
 ### User Experience
@@ -64,27 +64,27 @@ Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jan
 
 ### System & Theme
 - **System tray** — minimize to tray, double-click to restore, right-click context menu
-- **Auto-updater** — checks GitHub Releases for new versions, downloads and installs silently
+- **Verified auto-updater** — requires exact release assets, size and SHA-256; optionally enforces a pinned Authenticode signer
 - **Dark & light themes** — switch with one click, fully theme-aware UI
-- **English & Persian** — full Farsi language support with RTL layout
+- **English & Persian** — Persian translations with RTL layout (remaining dialogs are being migrated)
 - **Frameless window** — modern custom title bar with native Windows 11 shadow and rounded corners
 - **Installer** — desktop and Start Menu shortcuts included
 
 ## Requirements
 
 - Windows 10/11
-- Administrator privileges (required to change DNS settings)
+- Administrator approval is requested only for Apply, Reset, and Flush operations
 
 ## Installation
 
 1. Download `DNSJantex-Setup.exe` from [Releases](https://github.com/ZeLoExE/dns-jantex/releases)
-2. Run the installer as Administrator
+2. Run the installer and approve its Windows UAC prompt
 3. Follow the setup wizard
-4. Launch DNS Jantex from Desktop or Start Menu
+4. Launch DNS Jantex normally from Desktop or Start Menu
 
 ## Usage
 
-1. Run **DNS Jantex** as Administrator
+1. Run **DNS Jantex** normally; Windows requests approval only when a DNS change is made
 2. Click **Smart Connect** to auto-find the fastest DNS, or browse the provider list
 3. Click **Apply** to set the DNS
 4. Use **Default DNS** to reset to automatic
@@ -98,17 +98,20 @@ Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jan
 ## Building from Source
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Install runtime and development dependencies
+pip install -r requirements-dev.txt
 
 # Run directly
 python main.py
 
-# Build executables (DNSChanger.exe + Updater.exe)
+# Build executables (DNSChanger.exe + Updater.exe + DNSHelper.exe)
 build.bat
 
-# Build installer (requires NSIS)
+# Build installer locally (requires NSIS)
 makensis installer.nsi
+
+# Recommended public release: push a version tag and let GitHub Actions build,
+# checksum, and upload the exact Auto Update assets (see docs/RELEASING.md)
 ```
 
 ## Project Structure
@@ -116,7 +119,8 @@ makensis installer.nsi
 ```
 dns-jantex/
 ├── main.py                    # Application entry point
-├── updater.py                 # Standalone updater script
+├── updater.py                 # Standalone verified-update installer
+├── helper.py                  # Narrow elevated DNS-operation helper
 ├── VERSION                    # Current version string
 ├── ui/                        # User interface
 │   ├── main_window.py         # Main window + system tray + updater UI
@@ -129,12 +133,16 @@ dns-jantex/
 │   └── toast.py               # Desktop toast notifications
 ├── core/                      # Core logic
 │   ├── dns_manager.py         # DNS operations
-│   ├── dns_providers.py       # Provider list (70+)
+│   ├── dns_providers.py       # Validated IPv4 provider list (45+)
 │   ├── network_adapter.py     # Network detection + Wi-Fi SSID
 │   ├── custom_dns.py          # Custom DNS persistent storage
 │   ├── network_profiles.py    # Network profile data model + CRUD
 │   ├── network_monitor.py     # Background network change detection
-│   ├── powershell.py          # PowerShell command executor
+│   ├── powershell.py          # Escaped PowerShell command executor
+│   ├── elevated_client.py     # UAC helper client
+│   ├── validation.py          # Shared IPv4 validation
+│   ├── paths.py               # Per-user LocalAppData paths
+│   ├── storage.py             # Atomic JSON persistence
 │   └── updater.py             # Update checker (GitHub Releases API)
 ├── translations/              # Language files
 │   ├── en.json
@@ -144,22 +152,36 @@ dns-jantex/
 ├── build.bat                  # Build script (app + updater)
 ├── build.spec                 # PyInstaller config for main app
 ├── build_updater.spec         # PyInstaller config for updater
+├── build_helper.spec          # PyInstaller config for elevated helper
 └── installer.nsi              # NSIS installer script
 ```
 
-## What's New in v3.0.0
+## What's New in v3.0.4
 
-### Network Profiles
-Create DNS profiles linked to specific networks. When you connect to a recognized Wi-Fi network or Ethernet adapter, DNS Jantex can automatically apply the correct DNS settings or prompt you for confirmation.
+### Safer privilege model
+The main UI now runs as a normal user. A small, allow-listed helper requests UAC
+only for Set, Reset, and Flush, validates all input again after elevation, and
+never accepts arbitrary PowerShell commands.
 
-### Toast Notifications
-Desktop-level notifications that appear at the screen's bottom-right corner. They slide in smoothly, auto-dismiss after 3 seconds, and don't block interaction with the main window.
+### Verified automatic updates
+The updater requires the exact Installer and checksum-manifest assets, enforces
+the declared size, and checks SHA-256 before execution. If a Code Signing
+Certificate is configured, a pinned Authenticode signer is required as a second
+independent check. See [Releasing](docs/RELEASING.md) and [Code Signing](docs/CODE_SIGNING.md).
 
-### Improved UI
-All frameless dialogs now fade in smoothly. Interactive buttons have improved hover effects with icon color transitions. The preferences popup menu has a clean transparent background with proper rounded corners.
+### Reliable state and persistence
+Language and skipped-update state persist correctly, providers are stored by a
+stable name instead of a sortable index, JSON writes are atomic, and user data
+is migrated to `%LOCALAPPDATA%\DNS Jantex`.
 
-### Better DNS Management
-Network profile detection always runs in the background. The Auto Switch setting only controls whether profiles are applied silently or shown with a confirmation dialog, giving you full control.
+### Real DNS benchmarks
+Smart Connect now sends DNS queries instead of ICMP pings, honors its timeout,
+and ranks providers using the median of three samples.
+
+### Development quality
+The provider list is checked for invalid and duplicate pairs, IPv4 validation is
+shared across every input path, and CI runs compilation, linting, and tests on
+Windows and Linux with Python 3.10 and 3.12.
 
 ## Support
 

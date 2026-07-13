@@ -1,0 +1,124 @@
+name: Build and publish Windows release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without v prefix (for example 3.0.4)'
+        required: true
+        default: '3.0.4'
+      publish:
+        description: 'Create/update the public GitHub Release'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Resolve and validate release version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            $tag = '${{ github.ref_name }}'
+          } else {
+            $tag = 'v${{ inputs.version }}'
+          }
+          if ($tag -ne "v$version") {
+            throw "Tag/input $tag does not match VERSION=$version"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Run tests and lint
+        shell: cmd
+        run: run_tests.bat
+
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis --no-progress -y
+
+      - name: Build application, updater, and elevated helper
+        shell: cmd
+        run: build.bat
+
+      - name: Build NSIS installer
+        shell: pwsh
+        run: '& "${env:ProgramFiles(x86)}\NSIS\makensis.exe" installer.nsi'
+
+      - name: Create checksum manifest
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          $installer = Get-Item .\DNSJantex-Setup.exe
+          $sha256 = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          $manifest = [ordered]@{
+            version = $env:RELEASE_TAG
+            assets = [ordered]@{
+              'DNSJantex-Setup.exe' = [ordered]@{
+                size = $installer.Length
+                sha256 = $sha256
+              }
+            }
+          }
+          $manifest | ConvertTo-Json -Depth 5 | Set-Content .\DNSJantex-checksums.json -Encoding utf8NoBOM
+          Get-Content .\DNSJantex-checksums.json
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DNS-Jantex-${{ steps.version.outputs.version }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            DNSJantex-Setup.exe
+            DNSJantex-checksums.json
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag' || inputs.publish == true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $notes = ".\docs\releases\v$env:RELEASE_VERSION.md"
+          if (-not (Test-Path $notes)) {
+            throw "Release notes not found: $notes"
+          }
+          gh release view $env:RELEASE_TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:RELEASE_TAG .\DNSJantex-Setup.exe .\DNSJantex-checksums.json --clobber
+            gh release edit $env:RELEASE_TAG --title "DNS Jantex $env:RELEASE_VERSION" --notes-file $notes
+          } else {
+            gh release create $env:RELEASE_TAG .\DNSJantex-Setup.exe .\DNSJantex-checksums.json `
+              --title "DNS Jantex $env:RELEASE_VERSION" --notes-file $notes
+          }

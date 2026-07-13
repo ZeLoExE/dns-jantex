@@ -2,7 +2,7 @@
 DNS Jantex Updater - Standalone updater executable.
 
 Usage:
-    updater.exe <installer_path> <app_exe_name>
+    updater.exe <installer_path> <app_exe_name> <expected_sha256>
 
 Workflow:
     1. Wait for the main application to fully exit.
@@ -20,6 +20,9 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from core.elevated_client import _run_elevated
+from core.updater import verify_installer_package
+
 
 def wait_for_process_exit(exe_name: str, timeout: int = 60) -> bool:
     """Wait until a process with the given name is no longer running."""
@@ -35,20 +38,16 @@ def wait_for_process_exit(exe_name: str, timeout: int = 60) -> bool:
     return False
 
 
-def run_installer(installer_path: Path) -> bool:
-    """Run the NSIS installer silently and wait for it to finish."""
-    if not installer_path.exists():
+def run_installer(installer_path: Path, expected_sha256: str) -> bool:
+    """Re-verify, elevate, and wait for the NSIS installer."""
+    verified, _ = verify_installer_package(installer_path, expected_sha256)
+    if not verified:
         return False
 
-    # NSIS supports /S for silent install
-    proc = subprocess.Popen(
-        [str(installer_path), "/S"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        creationflags=subprocess.CREATE_NO_WINDOW,
-    )
-    proc.wait(timeout=300)
-    return proc.returncode == 0
+    # The main UI is intentionally unprivileged. ShellExecuteEx displays UAC for
+    # the already verified installer and gives us a process handle to wait on.
+    success, _ = _run_elevated(installer_path, ["/S"], timeout_seconds=300)
+    return success
 
 
 def find_installed_exe() -> Path | None:
@@ -64,26 +63,32 @@ def find_installed_exe() -> Path | None:
 
 
 def cleanup(installer_path: Path):
-    """Remove the temporary installer file."""
+    """Remove the installer and its app-created empty temporary directory."""
     try:
-        if installer_path.exists():
-            installer_path.unlink()
-    except Exception:
+        installer_path.unlink(missing_ok=True)
+        parent = installer_path.resolve().parent
+        system_temp = Path(tempfile.gettempdir()).resolve()
+        if parent.parent == system_temp and parent.name.startswith("dns_jantex_update-"):
+            parent.rmdir()
+    except OSError:
         pass
 
 
 def main():
-    if len(sys.argv) < 3:
+    if len(sys.argv) != 4:
         sys.exit(1)
 
     installer_path = Path(sys.argv[1])
     app_exe_name = sys.argv[2]  # e.g. "DNSChanger.exe"
+    expected_sha256 = sys.argv[3]
 
-    # Step 1: Wait for the main application to fully exit
-    wait_for_process_exit(app_exe_name, timeout=60)
+    # Step 1: Never replace files while the main application is still running.
+    if not wait_for_process_exit(app_exe_name, timeout=60):
+        cleanup(installer_path)
+        sys.exit(1)
 
-    # Step 2: Run the installer silently
-    if not run_installer(installer_path):
+    # Step 2: Run the verified installer silently after a UAC prompt
+    if not run_installer(installer_path, expected_sha256):
         cleanup(installer_path)
         sys.exit(1)
 

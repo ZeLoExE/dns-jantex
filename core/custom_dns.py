@@ -1,15 +1,20 @@
 """Custom DNS Manager - save/load/edit custom DNS entries."""
 
-import json
-import os
-import sys
-from dataclasses import dataclass, asdict
+from __future__ import annotations
+
+import uuid
+from dataclasses import asdict, dataclass
 from typing import Optional
+
+from .paths import data_dir
+from .storage import atomic_write_json, load_json
+from .validation import normalize_ipv4
 
 
 @dataclass
 class CustomDNSEntry:
-    """A custom DNS entry."""
+    """A custom IPv4 DNS entry."""
+
     name: str
     primary: str
     secondary: str
@@ -17,80 +22,74 @@ class CustomDNSEntry:
 
     def __post_init__(self):
         if not self.id:
-            self.id = f"{self.name}_{self.primary}".replace(" ", "_").lower()
+            self.id = uuid.uuid4().hex[:12]
 
 
-# Storage path — writable location next to the executable (not inside _MEIPASS)
-if getattr(sys, "frozen", False):
-    _APP_DIR = os.path.dirname(sys.executable)
-else:
-    _APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-DATA_DIR = os.path.join(_APP_DIR, "config")
-CUSTOM_DNS_FILE = os.path.join(DATA_DIR, "custom_dns.json")
-
-
-def _ensure_dir():
-    """Ensure config directory exists."""
-    os.makedirs(DATA_DIR, exist_ok=True)
+CUSTOM_DNS_FILE = data_dir() / "custom_dns.json"
 
 
 def load_custom_dns() -> list[CustomDNSEntry]:
-    """Load custom DNS entries from file."""
-    _ensure_dir()
-    if not os.path.exists(CUSTOM_DNS_FILE):
+    data = load_json(CUSTOM_DNS_FILE, [])
+    if not isinstance(data, list):
         return []
 
-    try:
-        with open(CUSTOM_DNS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return [CustomDNSEntry(**item) for item in data]
-    except (json.JSONDecodeError, TypeError, KeyError):
-        return []
+    entries: list[CustomDNSEntry] = []
+    for item in data:
+        try:
+            if not isinstance(item, dict):
+                continue
+            entry = CustomDNSEntry(**item)
+            entry.primary = normalize_ipv4(entry.primary)
+            entry.secondary = normalize_ipv4(entry.secondary, required=False)
+            entries.append(entry)
+        except (TypeError, ValueError):
+            continue
+    return entries
 
 
-def save_custom_dns(entries: list[CustomDNSEntry]):
-    """Save custom DNS entries to file."""
-    _ensure_dir()
-    data = [asdict(e) for e in entries]
-    with open(CUSTOM_DNS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+def save_custom_dns(entries: list[CustomDNSEntry]) -> None:
+    atomic_write_json(CUSTOM_DNS_FILE, [asdict(entry) for entry in entries])
 
 
 def add_custom_dns(name: str, primary: str, secondary: str) -> CustomDNSEntry:
-    """Add a new custom DNS entry."""
+    name = name.strip()
+    if not name:
+        raise ValueError("DNS name is required")
+    entry = CustomDNSEntry(
+        name=name,
+        primary=normalize_ipv4(primary),
+        secondary=normalize_ipv4(secondary, required=False),
+    )
     entries = load_custom_dns()
-    entry = CustomDNSEntry(name=name, primary=primary, secondary=secondary)
     entries.append(entry)
     save_custom_dns(entries)
     return entry
 
 
 def update_custom_dns(entry_id: str, name: str, primary: str, secondary: str) -> bool:
-    """Update an existing custom DNS entry."""
+    name = name.strip()
+    if not name:
+        raise ValueError("DNS name is required")
+    primary = normalize_ipv4(primary)
+    secondary = normalize_ipv4(secondary, required=False)
+
     entries = load_custom_dns()
-    for i, e in enumerate(entries):
-        if e.id == entry_id:
-            entries[i] = CustomDNSEntry(name=name, primary=primary, secondary=secondary, id=entry_id)
+    for index, entry in enumerate(entries):
+        if entry.id == entry_id:
+            entries[index] = CustomDNSEntry(name, primary, secondary, id=entry_id)
             save_custom_dns(entries)
             return True
     return False
 
 
 def remove_custom_dns(entry_id: str) -> bool:
-    """Remove a custom DNS entry."""
     entries = load_custom_dns()
-    original_count = len(entries)
-    entries = [e for e in entries if e.id != entry_id]
-    if len(entries) < original_count:
-        save_custom_dns(entries)
-        return True
-    return False
+    filtered = [entry for entry in entries if entry.id != entry_id]
+    if len(filtered) == len(entries):
+        return False
+    save_custom_dns(filtered)
+    return True
 
 
 def get_custom_dns_by_id(entry_id: str) -> Optional[CustomDNSEntry]:
-    """Get a custom DNS entry by ID."""
-    for e in load_custom_dns():
-        if e.id == entry_id:
-            return e
-    return None
+    return next((entry for entry in load_custom_dns() if entry.id == entry_id), None)
