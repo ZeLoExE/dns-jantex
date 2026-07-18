@@ -30,6 +30,10 @@
 
 Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jantex/releases).
 
+## Antivirus Result
+
+You can check the antivirus result [here](https://www.virustotal.com/gui/file/4ea6de333a9706ab081336f0cf237b44061e02e00d1ac76c6fdb46515a7f41ee?nocache=1).
+
 ## Features
 
 ### DNS Management
