@@ -9,8 +9,8 @@
   <img src="https://img.shields.io/badge/python-3.10+-3776ab?style=for-the-badge&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/platform-Windows_10%2F11-0078d4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
   <img src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge" alt="License">
-  <a href="https://dns-jantex.vercel.app/"><img src="https://img.shields.io/badge/Website-dns--jantex.vercel.app-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website"></a>
-  <a href="https://dns-jantex.vercel.app/"><img src="https://img.shields.io/badge/Web_App-Live-green?style=for-the-badge&logo=vuedotjs&logoColor=white" alt="Web App"></a>
+  <a href="https://dist-qj6odwi8b-jan-tex.vercel.app/"><img src="https://img.shields.io/badge/WEB_APP-Live-green?style=for-the-badge&logo=vercel&logoColor=white" alt="WEB APP"></a>
+  <a href="https://dns-jantex.pages.dev/"><img src="https://img.shields.io/badge/Website-dns--jantex.pages.dev-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website"></a>
 </p>
 
 <p align="center">
@@ -30,6 +30,12 @@
 ## Download
 
 Download the latest installer from [Releases](https://github.com/ZeLoExE/dns-jantex/releases).
+
+## Web App
+
+Try the web-based DNS simulator — no installation required:
+
+**[https://dist-qj6odwi8b-jan-tex.vercel.app/](https://dist-qj6odwi8b-jan-tex.vercel.app/)**
 
 ## Antivirus Result
 
