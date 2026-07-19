@@ -10,8 +10,7 @@
   <img src="https://img.shields.io/badge/platform-Windows_10%2F11-0078d4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows">
   <img src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge" alt="License">
   <a href="https://dist-qj6odwi8b-jan-tex.vercel.app/"><img src="https://img.shields.io/badge/WEB_APP-Live-green?style=for-the-badge&logo=vercel&logoColor=white" alt="WEB APP"></a>
-  <a href="https://dns-jantex.vercel.app/"><img src="https://img.shields.io/badge/Landing_Page-Live-purple?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Landing Page"></a>
-  <a href="https://dns-jantex.pages.dev/"><img src="https://img.shields.io/badge/Website-dns--jantex.pages.dev-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website"></a>
+  <a href="https://dns-jantex.vercel.app/"><img src="https://img.shields.io/badge/Landing_Page-Open-blue?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Landing Page"></a>
 </p>
 
 <p align="center">
