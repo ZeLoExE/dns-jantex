@@ -15,6 +15,13 @@ pub fn run() {
     let app_state = storage::init_app_state();
 
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main").or_else(|| app.webview_windows().values().next().cloned()) {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .manage(app_state.clone())
         .setup({
             let app_state = app_state.clone();
@@ -41,7 +48,7 @@ pub fn run() {
                 let mut tray_builder = TrayIconBuilder::new()
                     .menu(&menu)
                     .show_menu_on_left_click(false)
-                    .tooltip("DNS Jantex v2");
+                    .tooltip("DNS Jantex v4.0.1");
 
                 if let Some(icon) = app.default_window_icon() {
                     tray_builder = tray_builder.icon(icon.clone());
@@ -120,6 +127,7 @@ pub fn run() {
             commands::delete_network_profile,
             commands::save_settings,
             commands::check_for_updates,
+            commands::install_update,
             commands::skip_update_version,
             commands::is_admin_elevated,
             commands::check_captive_portal,

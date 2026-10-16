@@ -29,7 +29,7 @@ pub async fn check_latest_release(skipped_version: Option<&str>) -> Result<Optio
 
     let client = reqwest::Client::builder()
         .user_agent("DNS-Jantex-Desktop-App")
-        .timeout(Duration::from_millis(4000))
+        .timeout(Duration::from_millis(5000))
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -40,7 +40,7 @@ pub async fn check_latest_release(skipped_version: Option<&str>) -> Result<Optio
         .map_err(|e| format!("Updater request error: {}", e))?;
 
     if !res.status().is_success() {
-        return Ok(None); // e.g. 404 if no release yet, or rate limited
+        return Ok(None);
     }
 
     let release = res.json::<GitHubRelease>().await.map_err(|e| e.to_string())?;
@@ -54,13 +54,14 @@ pub async fn check_latest_release(skipped_version: Option<&str>) -> Result<Optio
         }
     }
 
-    // Compare versions (semver check or string inequality)
+    // Compare semantic versions (e.g. 4.0.1 > 4.0.0)
     if is_newer_version(&latest_tag, &current_version) {
         let mut download_url = None;
         if let Some(assets) = release.assets {
             if let Some(exe_asset) = assets
                 .iter()
-                .find(|a| a.name.ends_with(".exe") || a.name.ends_with(".msi"))
+                .find(|a| a.name.contains("Setup") && a.name.ends_with(".exe"))
+                .or_else(|| assets.iter().find(|a| a.name.ends_with(".exe")))
             {
                 download_url = Some(exe_asset.browser_download_url.clone());
             }
@@ -78,7 +79,50 @@ pub async fn check_latest_release(skipped_version: Option<&str>) -> Result<Optio
     }
 }
 
-/// Simple semver comparison helper (e.g. "2.0.1" > "2.0.0")
+/// Downloads the new installer from GitHub and launches it with elevation, then exits the app.
+pub async fn download_and_install_update(download_url: &str) -> Result<(), String> {
+    let client = reqwest::Client::builder()
+        .user_agent("DNS-Jantex-Desktop-App")
+        .timeout(Duration::from_secs(180))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let res = client
+        .get(download_url)
+        .send()
+        .await
+        .map_err(|e| format!("Download request error: {}", e))?;
+
+    if !res.status().is_success() {
+        return Err(format!("Download failed with HTTP status: {}", res.status()));
+    }
+
+    let bytes = res.bytes().await.map_err(|e| format!("Failed to read update payload: {}", e))?;
+
+    let temp_dir = std::env::temp_dir();
+    let installer_path = temp_dir.join("DNS-Jantex-Update-Setup.exe");
+
+    std::fs::write(&installer_path, &bytes)
+        .map_err(|e| format!("Failed to write installer to temp directory: {}", e))?;
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        let mut cmd = std::process::Command::new("powershell");
+        cmd.args([
+            "-NoProfile",
+            "-Command",
+            &format!("Start-Process -FilePath '{}' -Verb RunAs", installer_path.to_string_lossy()),
+        ]);
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        cmd.spawn().map_err(|e| format!("Failed to spawn installer: {}", e))?;
+    }
+
+    // Immediately terminate the running app so NSIS installer can replace files without conflict
+    std::process::exit(0);
+}
+
+/// Simple semver comparison helper (e.g. "4.0.1" > "4.0.0")
 fn is_newer_version(latest: &str, current: &str) -> bool {
     let parse_parts = |s: &str| -> Vec<u32> {
         s.split('.')

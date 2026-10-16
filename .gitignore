@@ -12,6 +12,7 @@ src-tauri/resources/
 *.dll
 *.pdb
 release_assets/
+release_notes*.md
 
 # Logs & Temporary Scripts
 *.log

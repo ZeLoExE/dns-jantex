@@ -210,6 +210,11 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<Option<Upda
 }
 
 #[tauri::command]
+pub async fn install_update(download_url: String) -> Result<(), String> {
+    updater::download_and_install_update(&download_url).await
+}
+
+#[tauri::command]
 pub async fn skip_update_version(
     version: String,
     state: State<'_, AppState>,

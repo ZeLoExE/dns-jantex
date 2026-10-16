@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "DNS Jantex",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "identifier": "com.jantex.dnsjantex",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "DNS Jantex v4.0.0",
+        "title": "DNS Jantex v4.0.1",
         "url": "index.html",
         "width": 840,
         "height": 680,

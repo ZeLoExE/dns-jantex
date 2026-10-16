@@ -47,7 +47,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             DNS Jantex
           </span>
           <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md bg-slate-800/90 text-slate-400 border border-slate-700/50 leading-none">
-            v4.0.0
+            v4.0.1
           </span>
         </div>
       </div>

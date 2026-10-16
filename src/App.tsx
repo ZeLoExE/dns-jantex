@@ -349,10 +349,19 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleUpdateNow = () => {
+  const handleUpdateNow = async () => {
     if (updateInfo) {
-      const targetUrl = updateInfo.download_url || updateInfo.release_url;
-      invoke("open_external_url", { url: targetUrl });
+      if (updateInfo.download_url) {
+        showToast("Downloading update... Please wait.", "info");
+        try {
+          await invoke("install_update", { downloadUrl: updateInfo.download_url });
+        } catch (err) {
+          showToast(`Direct update failed: ${err}. Opening release page...`, "error");
+          invoke("open_external_url", { url: updateInfo.release_url });
+        }
+      } else {
+        invoke("open_external_url", { url: updateInfo.release_url });
+      }
     }
   };
 
