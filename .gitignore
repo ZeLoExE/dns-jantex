@@ -1,36 +1,30 @@
-# Build artifacts
-build/
+# Node & Dependencies
+node_modules/
 dist/
-*.spec
-!build.spec
-!build_updater.spec
-!build_helper.spec
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-.venv/
+# Rust & Tauri Builds
+src-tauri/target/
+src-tauri/resources/
 
-# Config (user settings)
-config/settings.json
-config/custom_dns.json
-config/network_profiles.json
-*.corrupt-*
+# Temporary & Release Artifacts
+release_assets/
+*.log
+*.tmp
+*.bak
+prepare_release_assets.ps1
+check_exit.ps1
+run_test.ps1
 
-# Installer output
-DNSJantex-Setup.exe
-DNSJantex-checksums.json
-
-# OS files
-Thumbs.db
-Desktop.ini
-.DS_Store
-
-# IDE
-.vscode/
+# IDE & OS
 .idea/
-.mimocode/
-assets/DNSJantex-Setup (1).exe
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+Thumbs.db
+.DS_Store

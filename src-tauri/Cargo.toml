@@ -1,0 +1,24 @@
+[package]
+name = "dns-jantex"
+version = "4.0.0"
+description = "Modern Windows DNS & Network Profile Manager"
+authors = ["ZeLoExE"]
+edition = "2021"
+
+[lib]
+name = "dns_jantex_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = ["tray-icon", "custom-protocol"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1.10"
+dirs = "5.0"
