@@ -8,6 +8,7 @@
 *Re-engineered from scratch with Rust (Tauri v2) & React*
 
 [![Release](https://img.shields.io/github/v/release/ZeLoExE/dns-jantex?style=for-the-badge&color=6366f1)](https://github.com/ZeLoExE/dns-jantex/releases/latest)
+[![VirusTotal Verified](https://img.shields.io/badge/VirusTotal-Verified_Clean-00a86b?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/1c49ecae3a4e6c6030df365b9f6fd83b6caf27b6f257d3c33695abffee1b03bf)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2.0-24c8db?style=for-the-badge&logo=tauri&logoColor=white)](https://tauri.app)
 [![Rust](https://img.shields.io/badge/Rust-2021_Edition-dea584?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![React](https://img.shields.io/badge/React-18+-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
@@ -52,31 +53,31 @@
 
 ---
 
-## 🔒 Security, Trust & Why Administrator Privileges? | چرا متن‌باز و نیازمند دسترسی ادمین؟
+## 🔒 Security, VirusTotal & Why Administrator Privileges? | شفافیت امنیتی، ویروس‌توتال و دسترسی ادمین
 
 ### 🇬🇧 English
-- **Why Administrator Privileges?** Modifying Windows network adapter DNS addresses natively requires Windows Administrator privileges. DNS Jantex only requests elevation to configure your network adapter DNS table and flush the system resolver cache.
+- **Why Administrator Privileges?** Modifying Windows network adapter DNS addresses natively requires Windows Administrator privileges. DNS Jantex only requests elevation to configure your network adapter DNS table via standard Windows network commands (`netsh` / PowerShell `Set-DnsClientServerAddress`) and flush the system resolver cache.
 - **100% Open-Source & Transparent:** Because DNS tools manage critical internet routing parameters, DNS Jantex is completely open-source under GNU GPLv3. Every line of backend Rust and frontend React code is published right here for anyone to inspect and audit.
-- **Windows SmartScreen Note:** Fresh releases of independent open-source tools without multi-thousand-dollar corporate EV code-signing certificates may trigger a Windows SmartScreen warning (*"Windows protected your PC"*). This is completely normal for new community software. You can safely click **"More info"** &rarr; **"Run anyway"**. You can verify the integrity of any downloaded binary using the SHA-256 hashes listed below.
+- **Windows SmartScreen Note:** Fresh releases of independent open-source tools without multi-thousand-dollar corporate EV code-signing certificates may trigger a Windows SmartScreen warning (*"Windows protected your PC"*). This is completely normal for new community software. You can safely click **"More info"** &rarr; **"Run anyway"**. You can independently verify the binary integrity using the SHA-256 hashes and VirusTotal analysis below.
 
 ### 🇮🇷 فارسی
-- **دلیل نیاز به دسترسی Administrator:** در سیستم‌عامل ویندوز، تغییر آی‌پی سرورهای DNS هر کارت شبکه ذاتاً نیازمند دسترسی ادمین است. این برنامه تنها برای ثبت سرورها و پاکسازی کش DNS از این دسترسی استفاده می‌کند.
-- **شفافیت کامل و متن‌باز:** با توجه به اهمیت امنیت ترافیک اینترنت، تمام سورس‌کد پروژه تحت لایسنس بین‌المللی GPLv3 به صورت ۱۰۰٪ عمومی و متن‌باز در دسترس است تا هر کاربری بتواند کارکرد امن آن را تأیید کند.
-- **پیام Windows SmartScreen:** به دلیل هزینه چند هزار دلاری گواهی‌های تجاری EV در ویندوز، نرم‌افزارهای مستقل متن‌باز در اولین اجراها ممکن است با اخطار SmartScreen ویندوز مواجه شوند. این موضوع طبیعی بوده و می‌توانید با زدن **More info** و سپس **Run anyway** برنامه را اجرا کنید. همچنین با تطبیق چک‌سام SHA-256 زیر می‌توانید از اصالت فایل مطمئن شوید.
+- **دلیل نیاز به دسترسی Administrator:** در سیستم‌عامل ویندوز، تغییر آی‌پی سرورهای DNS هر کارت شبکه ذاتاً نیازمند دسترسی ادمین است. این برنامه تنها برای ثبت سرورها از طریق دستورات بومی شبکه ویندوز (`netsh` / `Set-DnsClientServerAddress`) و پاکسازی کش DNS از این دسترسی استفاده می‌کند.
+- **شفافیت کامل و متن‌باز:** با توجه به اهمیت امنیت ترافیک اینترنت، تمام سورس‌کد پروژه تحت لایسنس بین‌المللی GPLv3 به صورت ۱۰۰٪ عمومی و متن‌باز در دسترس است تا هر کاربری بتواند کارکرد امن آن را بررسی و ممیزی کند.
+- **پیام Windows SmartScreen:** به دلیل هزینه چند هزار دلاری گواهی‌های تجاری EV در ویندوز، نرم‌افزارهای مستقل متن‌باز در اولین اجراها ممکن است با اخطار SmartScreen ویندوز مواجه شوند. این موضوع طبیعی بوده و می‌توانید با زدن **More info** و سپس **Run anyway** برنامه را اجرا کنید. همچنین با تطبیق چک‌سام SHA-256 و گزارش ویروس‌توتال زیر می‌توانید از اصالت و سلامت کامل فایل اطمینان حاصل کنید.
 
 ---
 
-## 📦 Downloads & SHA-256 Checksums | دانلود و اعتبارسنجی
+## 📦 Downloads, Checksums & VirusTotal Scans | دانلود، هش‌ها و اسکن ویروس‌توتال
 
-Official releases are hosted exclusively on the [GitHub Releases](https://github.com/ZeLoExE/dns-jantex/releases/latest) page:
+Official releases are hosted exclusively on the [GitHub Releases](https://github.com/ZeLoExE/dns-jantex/releases/latest) page. You can also download the signed checksum manifest [checksums.sha256.txt](https://github.com/ZeLoExE/dns-jantex/releases/download/v4.0.0/checksums.sha256.txt):
 
-| Package | Description | Size | SHA-256 Checksum |
-| :--- | :--- | :--- | :--- |
-| **`DNS-Jantex-v4.0.0-Setup.exe`** | Official Windows NSIS Installer | ~5.81 MB | `1c49ecae3a4e6c6030df365b9f6fd83b6caf27b6f257d3c33695abffee1b03bf` |
-| **`DNS-Jantex-v4.0.0-Portable.exe`** | Standalone Portable (No install needed) | ~12.1 MB | `6d6ebb74d35519b6c5fa3717a08d9984a9e77e535db3bf113f84c4ee6b707325` |
-| **`DNSJantex-Setup.exe`** | Legacy auto-updater compatible package | ~5.81 MB | `1c49ecae3a4e6c6030df365b9f6fd83b6caf27b6f257d3c33695abffee1b03bf` |
+| Package | Description | Size | SHA-256 Checksum | VirusTotal Report |
+| :--- | :--- | :--- | :--- | :---: |
+| **`DNS-Jantex-v4.0.0-Setup.exe`** | Official Windows NSIS Installer (Recommended) | ~5.81 MB | `1c49ecae3a4e6c6030df365b9f6fd83b6caf27b6f257d3c33695abffee1b03bf` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/1c49ecae3a4e6c6030df365b9f6fd83b6caf27b6f257d3c33695abffee1b03bf) |
+| **`DNS-Jantex-v4.0.0-Portable.exe`** | Standalone Portable (No install needed) | ~12.1 MB | `6d6ebb74d35519b6c5fa3717a08d9984a9e77e535db3bf113f84c4ee6b707325` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/6d6ebb74d35519b6c5fa3717a08d9984a9e77e535db3bf113f84c4ee6b707325) |
+| **`DNSJantex-Setup.exe`** | Legacy auto-updater compatible package | ~5.81 MB | `1c49ecae3a4e6c6030df365b9f6fd83b6caf27b6f257d3c33695abffee1b03bf` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/1c49ecae3a4e6c6030df365b9f6fd83b6caf27b6f257d3c33695abffee1b03bf) |
 
-### Verify Checksum in PowerShell:
+### Verify Checksum on your PC (PowerShell):
 ```powershell
 Get-FileHash -Path "DNS-Jantex-v4.0.0-Setup.exe" -Algorithm SHA256
 ```
