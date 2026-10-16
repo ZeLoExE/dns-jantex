@@ -12,7 +12,7 @@
 [![Rust](https://img.shields.io/badge/Rust-2021_Edition-dea584?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![React](https://img.shields.io/badge/React-18+-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![Platform](https://img.shields.io/badge/Platform-Windows_10%20%2F%2011-0078d4?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
-[![License](https://img.shields.io/github/license/ZeLoExE/dns-jantex?style=for-the-badge&color=10b981)](LICENSE.txt)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge&color=10b981)](LICENSE)
 
 <br/>
 
@@ -28,7 +28,7 @@
 
 ### ✨ Key Features
 - ⚡ **Ultra-Lightweight & Fast:** Installer reduced from **~80 MB** to **under 6 MB**; launches instantaneously with near-zero RAM footprint (~40 MB).
-- 🎯 **Real DNS UDP Port 53 Ping:** Concurrently tests true DNS lookup round-trip latency over raw UDP sockets (not deceptive ICMP pings) with strict timeouts.
+- 🎯 **Real DNS UDP Port 53 Ping:** Concurrently tests true DNS lookup round-trip latency over raw UDP sockets (not deceptive ICMP pings) with strict 1.5s timeouts.
 - 🔄 **Smart Network Profiles:** Automatically detects Wi-Fi SSID or Ethernet adapter switches and seamlessly applies your saved DNS configurations.
 - 🧹 **Zero-Window Silent Auto-Flush:** Flushes the Windows DNS resolver cache silently using background flags without flashing any CMD or PowerShell windows.
 - 🛡️ **Captive Portal Guard:** Automatically alerts you if hotel, airport, or cafe captive portal interception is detected on your network connection.
@@ -52,19 +52,34 @@
 
 ---
 
-## 🚀 Installation & Download | راهنمای دانلود و نصب
+## 🔒 Security, Trust & Why Administrator Privileges? | چرا متن‌باز و نیازمند دسترسی ادمین؟
 
-### Windows (10 / 11)
-Download the latest assets directly from the [GitHub Releases](https://github.com/ZeLoExE/dns-jantex/releases/latest) page:
+### 🇬🇧 English
+- **Why Administrator Privileges?** Modifying Windows network adapter DNS addresses natively requires Windows Administrator privileges. DNS Jantex only requests elevation to configure your network adapter DNS table and flush the system resolver cache.
+- **100% Open-Source & Transparent:** Because DNS tools manage critical internet routing parameters, DNS Jantex is completely open-source under GNU GPLv3. Every line of backend Rust and frontend React code is published right here for anyone to inspect and audit.
+- **Windows SmartScreen Note:** Fresh releases of independent open-source tools without multi-thousand-dollar corporate EV code-signing certificates may trigger a Windows SmartScreen warning (*"Windows protected your PC"*). This is completely normal for new community software. You can safely click **"More info"** &rarr; **"Run anyway"**. You can verify the integrity of any downloaded binary using the SHA-256 hashes listed below.
 
-| Package | Description | Size |
-| :--- | :--- | :--- |
-| **`DNS-Jantex-v4.0.0-Setup.exe`** | Official Windows NSIS Installer (Recommended) | ~5.8 MB |
-| **`DNS-Jantex-v4.0.0-Portable.exe`** | Standalone Portable Executable (No installation required) | ~12 MB |
-| **`DNSJantex-Setup.exe`** | Legacy auto-updater compatible installer package | ~5.8 MB |
+### 🇮🇷 فارسی
+- **دلیل نیاز به دسترسی Administrator:** در سیستم‌عامل ویندوز، تغییر آی‌پی سرورهای DNS هر کارت شبکه ذاتاً نیازمند دسترسی ادمین است. این برنامه تنها برای ثبت سرورها و پاکسازی کش DNS از این دسترسی استفاده می‌کند.
+- **شفافیت کامل و متن‌باز:** با توجه به اهمیت امنیت ترافیک اینترنت، تمام سورس‌کد پروژه تحت لایسنس بین‌المللی GPLv3 به صورت ۱۰۰٪ عمومی و متن‌باز در دسترس است تا هر کاربری بتواند کارکرد امن آن را تأیید کند.
+- **پیام Windows SmartScreen:** به دلیل هزینه چند هزار دلاری گواهی‌های تجاری EV در ویندوز، نرم‌افزارهای مستقل متن‌باز در اولین اجراها ممکن است با اخطار SmartScreen ویندوز مواجه شوند. این موضوع طبیعی بوده و می‌توانید با زدن **More info** و سپس **Run anyway** برنامه را اجرا کنید. همچنین با تطبیق چک‌سام SHA-256 زیر می‌توانید از اصالت فایل مطمئن شوید.
 
-> [!NOTE]  
-> If you are updating from **v3.0.4**, opening your existing client and clicking **Update** will automatically download and install v4.0.0 seamlessly.
+---
+
+## 📦 Downloads & SHA-256 Checksums | دانلود و اعتبارسنجی
+
+Official releases are hosted exclusively on the [GitHub Releases](https://github.com/ZeLoExE/dns-jantex/releases/latest) page:
+
+| Package | Description | Size | SHA-256 Checksum |
+| :--- | :--- | :--- | :--- |
+| **`DNS-Jantex-v4.0.0-Setup.exe`** | Official Windows NSIS Installer | ~5.81 MB | `1c49ecae3a4e6c6030df365b9f6fd83b6caf27b6f257d3c33695abffee1b03bf` |
+| **`DNS-Jantex-v4.0.0-Portable.exe`** | Standalone Portable (No install needed) | ~12.1 MB | `6d6ebb74d35519b6c5fa3717a08d9984a9e77e535db3bf113f84c4ee6b707325` |
+| **`DNSJantex-Setup.exe`** | Legacy auto-updater compatible package | ~5.81 MB | `1c49ecae3a4e6c6030df365b9f6fd83b6caf27b6f257d3c33695abffee1b03bf` |
+
+### Verify Checksum in PowerShell:
+```powershell
+Get-FileHash -Path "DNS-Jantex-v4.0.0-Setup.exe" -Algorithm SHA256
+```
 
 ---
 
@@ -72,9 +87,9 @@ Download the latest assets directly from the [GitHub Releases](https://github.co
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (v18+ or v20+ LTS)
-- [Rust](https://rustup.rs/) (stable toolchain)
+- [Rust](https://rustup.rs/) (stable toolchain `stable-x86_64-pc-windows-msvc`)
 - Visual Studio C++ Build Tools (MSVC)
-- WebView2 Runtime (Included by default on Windows 10/11)
+- WebView2 Runtime (Preinstalled on Windows 10/11)
 
 ### Setup & Run
 ```bash
@@ -85,14 +100,23 @@ cd dns-jantex
 # Install frontend dependencies
 npm install
 
-# Run development mode
+# Run in development mode
 npm run tauri dev
 
-# Build production installer
+# Build production NSIS installer & binary
 npm run tauri build
 ```
 
 ---
 
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.
+## 📄 License & Attribution
+
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.  
+Copyright (C) 2026 **ZeLoExE**.
+
+Under the terms of the GNU GPLv3:
+- You are free to run, copy, distribute, study, and modify this software.
+- If you modify or redistribute this software (or any derived work), your modifications **MUST** remain free and open-source under the same GPL-3.0 license.
+- Proper credit and attribution to the original author (**ZeLoExE**) must always be preserved.
+
+See the full [LICENSE](LICENSE) file for complete terms and conditions.
