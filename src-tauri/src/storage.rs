@@ -172,27 +172,48 @@ pub fn load_storage() -> AppData {
             if let Ok(mut data) = serde_json::from_str::<AppData>(&content) {
                 // Deduplicate and ensure verified default servers exist
                 let defaults = default_dns_servers();
+                let mut modified = false;
                 for def in defaults {
                     if let Some(existing) = data.dns_list.iter_mut().find(|d| d.id == def.id) {
-                        existing.primary_ip = def.primary_ip;
-                        existing.secondary_ip = def.secondary_ip;
-                        existing.name = def.name;
+                        if existing.primary_ip != def.primary_ip
+                            || existing.secondary_ip != def.secondary_ip
+                            || existing.name != def.name
+                        {
+                            existing.primary_ip = def.primary_ip;
+                            existing.secondary_ip = def.secondary_ip;
+                            existing.name = def.name;
+                            modified = true;
+                        }
                     } else {
                         data.dns_list.push(def);
+                        modified = true;
                     }
                 }
 
                 // Filter out any duplicate IDs
                 let mut seen = std::collections::HashSet::new();
+                let prev_count = data.dns_list.len();
                 data.dns_list.retain(|d| seen.insert(d.id.clone()));
+                if data.dns_list.len() != prev_count {
+                    modified = true;
+                }
 
-                let _ = save_storage(&data);
+                if modified {
+                    let to_save = data.clone();
+                    std::thread::spawn(move || {
+                        let _ = save_storage(&to_save);
+                    });
+                }
                 return data;
             }
         }
     }
+    // Fast path: if JSON doesn't exist yet, return embedded default DNS list instantly (<1ms)
     let default_data = AppData::default();
-    let _ = save_storage(&default_data);
+    let to_save = default_data.clone();
+    std::thread::spawn(move || {
+        let _ = save_storage(&to_save);
+    });
     default_data
 }
 

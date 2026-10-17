@@ -67,20 +67,20 @@ export const CustomDnsModal: React.FC<CustomDnsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="glass-panel w-full max-w-md rounded-2xl p-5 shadow-2xl border border-slate-700/80 bg-slate-900/95 flex flex-col gap-4">
+      <div className="w-full max-w-md rounded-2xl p-5 shadow-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/95 flex flex-col gap-4 text-slate-800 dark:text-slate-100 transition-colors">
         {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <Plus className="w-4 h-4" />
             </div>
-            <h2 className="text-base font-semibold text-slate-100">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">
               Add Custom DNS Server
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-all"
+            className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 rounded-lg transition-all"
           >
             <X className="w-4 h-4" />
           </button>
@@ -88,8 +88,8 @@ export const CustomDnsModal: React.FC<CustomDnsModalProps> = ({
 
         {/* Validation Error */}
         {error && (
-          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 dark:text-rose-400" />
             <span>{error}</span>
           </div>
         )}
@@ -97,7 +97,7 @@ export const CustomDnsModal: React.FC<CustomDnsModalProps> = ({
         {/* Inputs Form */}
         <div className="flex flex-col gap-3 text-xs">
           <div>
-            <label className="block text-slate-400 font-medium mb-1">
+            <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
               Server Name *
             </label>
             <input
@@ -105,13 +105,13 @@ export const CustomDnsModal: React.FC<CustomDnsModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. My Fast Gaming DNS"
-              className="w-full px-3 py-2 bg-slate-800/90 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-400 font-medium mb-1">
+              <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
                 Primary IPv4 *
               </label>
               <input
@@ -119,11 +119,11 @@ export const CustomDnsModal: React.FC<CustomDnsModalProps> = ({
                 value={primaryIp}
                 onChange={(e) => setPrimaryIp(e.target.value)}
                 placeholder="1.1.1.1"
-                className="w-full font-mono px-3 py-2 bg-slate-800/90 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full font-mono px-3 py-2 bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
             <div>
-              <label className="block text-slate-400 font-medium mb-1">
+              <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
                 Secondary IPv4 (Optional)
               </label>
               <input
@@ -131,13 +131,13 @@ export const CustomDnsModal: React.FC<CustomDnsModalProps> = ({
                 value={secondaryIp}
                 onChange={(e) => setSecondaryIp(e.target.value)}
                 placeholder="1.0.0.1"
-                className="w-full font-mono px-3 py-2 bg-slate-800/90 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                className="w-full font-mono px-3 py-2 bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-400 font-medium mb-1">
+            <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
               Category Tags (comma separated)
             </label>
             <input
@@ -145,7 +145,7 @@ export const CustomDnsModal: React.FC<CustomDnsModalProps> = ({
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="Custom, Gaming, Work"
-              className="w-full px-3 py-2 bg-slate-800/90 border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 
@@ -155,25 +155,25 @@ export const CustomDnsModal: React.FC<CustomDnsModalProps> = ({
               id="fav-check"
               checked={isFavorite}
               onChange={(e) => setIsFavorite(e.target.checked)}
-              className="rounded bg-slate-800 border-slate-700 text-indigo-600 focus:ring-indigo-500"
+              className="rounded bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
             />
-            <label htmlFor="fav-check" className="text-slate-300 cursor-pointer">
+            <label htmlFor="fav-check" className="text-slate-700 dark:text-slate-300 cursor-pointer">
               Pin to Favorites ⭐
             </label>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-all"
+            className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-all"
           >
             Cancel
           </button>
           <button
             onClick={() => handleSubmit(false)}
-            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-all active:scale-95 shadow-sm"
+            className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-slate-700 transition-all active:scale-95 shadow-sm"
           >
             Save to List
           </button>

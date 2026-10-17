@@ -129,7 +129,7 @@ $dhcpDnsEnabled = (-not $isStaticDns)
 "#;
 
     let mut cmd = Command::new("powershell");
-    cmd.args(["-NoProfile", "-NonInteractive", "-Command", script]);
+    cmd.args(["-NoProfile", "-NonInteractive", "-NoLogo", "-Command", script]);
 
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);

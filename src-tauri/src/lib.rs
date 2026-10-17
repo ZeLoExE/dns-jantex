@@ -9,7 +9,7 @@ pub mod updater;
 use profile_watcher::start_profile_watcher;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 pub fn run() {
     let app_state = storage::init_app_state();
@@ -31,6 +31,11 @@ pub fn run() {
                     let _ = w.show();
                     let _ = w.unminimize();
                     let _ = w.set_focus();
+                }
+
+                // Instantly emit fast state initialization payload to webview (<50ms)
+                if let Ok(data) = app_state.try_read() {
+                    let _ = app.emit("initial_state", &*data);
                 }
 
                 // Build Tray Menu
@@ -101,6 +106,27 @@ pub fn run() {
                 // Start background profile watcher and captive portal guard
                 start_profile_watcher(app.handle().clone(), app_state.clone());
 
+                // Start background Windows theme watcher for dynamic Light/Dark mode changes
+                let theme_app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let mut current_theme = commands::get_windows_registry_theme();
+                    loop {
+                        tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
+                        let new_theme = commands::get_windows_registry_theme();
+                        if new_theme != current_theme {
+                            current_theme = new_theme.clone();
+                            let t = match current_theme.as_str() {
+                                "light" => Some(tauri::Theme::Light),
+                                _ => Some(tauri::Theme::Dark),
+                            };
+                            for (_, w) in theme_app_handle.webview_windows() {
+                                let _ = w.set_theme(t);
+                            }
+                            let _ = theme_app_handle.emit("theme-changed", &new_theme);
+                        }
+                    }
+                });
+
                 Ok(())
             }
         })
@@ -109,9 +135,19 @@ pub fn run() {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
+            } else if let tauri::WindowEvent::ThemeChanged(theme) = event {
+                let theme_str = match theme {
+                    tauri::Theme::Light => "light",
+                    tauri::Theme::Dark => "dark",
+                    _ => "dark",
+                };
+                let _ = window.emit("theme-changed", theme_str);
             }
         })
         .invoke_handler(tauri::generate_handler![
+            commands::get_system_theme,
+            commands::set_window_theme,
+            commands::setup,
             commands::get_active_network,
             commands::get_app_data,
             commands::save_dns_server,
@@ -127,6 +163,7 @@ pub fn run() {
             commands::delete_network_profile,
             commands::save_settings,
             commands::check_for_updates,
+            commands::download_and_install_update,
             commands::install_update,
             commands::skip_update_version,
             commands::is_admin_elevated,

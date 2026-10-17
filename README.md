@@ -8,7 +8,7 @@
 *Re-engineered from scratch with Rust (Tauri v2) & React*
 
 [![Release](https://img.shields.io/github/v/release/ZeLoExE/dns-jantex?style=for-the-badge&color=6366f1)](https://github.com/ZeLoExE/dns-jantex/releases/latest)
-[![VirusTotal Verified](https://img.shields.io/badge/VirusTotal-Verified_Clean-00a86b?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/d31fb93c7c86ab478447e07ce4c9fac8ce5bd757ba9789d98c91f76c42f938fc)
+[![VirusTotal Verified](https://img.shields.io/badge/VirusTotal-Verified_Clean-00a86b?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2.0-24c8db?style=for-the-badge&logo=tauri&logoColor=white)](https://tauri.app)
 [![Rust](https://img.shields.io/badge/Rust-2021_Edition-dea584?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![React](https://img.shields.io/badge/React-18+-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
@@ -78,9 +78,9 @@ Official releases are hosted exclusively on the [GitHub Releases](https://github
 
 | Package | Description | Size | SHA-256 Checksum | VirusTotal Report |
 | :--- | :--- | :--- | :--- | :---: |
-| **`DNS-Jantex-v4.0.1-Setup.exe`** | Official Windows NSIS Installer (Recommended) | ~5.82 MB | `d31fb93c7c86ab478447e07ce4c9fac8ce5bd757ba9789d98c91f76c42f938fc` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/d31fb93c7c86ab478447e07ce4c9fac8ce5bd757ba9789d98c91f76c42f938fc) |
-| **`DNS-Jantex-v4.0.1-Portable.exe`** | Standalone Portable (No install needed) | ~12.2 MB | `bf3308e380395bf35b250734d19851f71f07dc4f026bca711ec3e5493cc63233` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/bf3308e380395bf35b250734d19851f71f07dc4f026bca711ec3e5493cc63233) |
-| **`DNSJantex-Setup.exe`** | Legacy auto-updater compatible package | ~5.82 MB | `d31fb93c7c86ab478447e07ce4c9fac8ce5bd757ba9789d98c91f76c42f938fc` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/d31fb93c7c86ab478447e07ce4c9fac8ce5bd757ba9789d98c91f76c42f938fc) |
+| **`DNS-Jantex-v4.0.1-Setup.exe`** | Official Windows NSIS Installer (Recommended) | ~8.37 MB | `756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a) |
+| **`DNS-Jantex-v4.0.1-Portable.exe`** | Standalone Portable (No install needed) | ~14.9 MB | `499c83a5c28560bbc3cf77294ec1571b6e5bc589568fda72b35f41d430eae07e` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/499c83a5c28560bbc3cf77294ec1571b6e5bc589568fda72b35f41d430eae07e) |
+| **`DNSJantex-Setup.exe`** | Legacy auto-updater compatible package | ~8.37 MB | `756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a) |
 
 ### Verify Checksum on your PC (PowerShell):
 ```powershell

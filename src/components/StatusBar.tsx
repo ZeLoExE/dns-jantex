@@ -74,14 +74,14 @@ export const StatusBar: React.FC<StatusBarProps> = ({
       )}
 
       {/* Main Top Network Status Bar (Zero-wrap, High Density) */}
-      <div className="bg-slate-900/80 border border-slate-800/90 rounded-xl py-2 px-3.5 flex items-center justify-between gap-3 shadow-md backdrop-blur-md">
+      <div className="bg-white border border-slate-200/90 rounded-xl py-2 px-3.5 flex items-center justify-between gap-3 shadow-md shadow-slate-900/[0.05] dark:bg-slate-900/80 dark:border-slate-800/90 dark:shadow-md backdrop-blur-md transition-colors">
         {/* Left Side: Adapter Icon + Network Name + Badges + Inline Active DNS */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <div
             className={`w-7 h-7 rounded-lg flex items-center justify-center border shrink-0 transition-all ${
               isConnected
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                : "bg-slate-800 border-slate-700 text-slate-500"
+                ? "bg-emerald-50 border-emerald-300 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-400"
+                : "bg-slate-100 border-slate-300 text-slate-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-500"
             }`}
           >
             {isWifi ? <Wifi className="w-3.5 h-3.5" /> : <Network className="w-3.5 h-3.5" />}
@@ -89,57 +89,73 @@ export const StatusBar: React.FC<StatusBarProps> = ({
 
           <div className="flex items-center gap-2 min-w-0 flex-wrap sm:flex-nowrap">
             {/* SSID / Network Name */}
-            <span className="font-semibold text-xs text-slate-100 truncate max-w-[120px]" title={network?.network_identifier}>
-              {network?.network_identifier || "Searching Network..."}
+            <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate max-w-[120px]" title={network?.network_identifier}>
+              {network?.network_identifier || (network === null ? "Detecting Network..." : "No Connection")}
             </span>
 
             {/* Connection Type Badge */}
             <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 flex items-center gap-1 ${
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 flex items-center gap-1 ${
                 isConnected
-                  ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                  : "bg-rose-500/15 text-rose-300 border border-rose-500/30"
+                  ? "bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30"
+                  : network === null
+                  ? "bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700/60"
+                  : "bg-rose-50 text-rose-800 border border-rose-300 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-500/30"
               }`}
             >
               <span
                 className={`w-1 h-1 rounded-full ${
-                  isConnected ? "bg-emerald-400 animate-pulse" : "bg-rose-400"
+                  isConnected
+                    ? "bg-emerald-600 dark:bg-emerald-400 animate-pulse"
+                    : network === null
+                    ? "bg-amber-600 dark:bg-amber-400 animate-pulse"
+                    : "bg-rose-600 dark:bg-rose-400"
                 }`}
               />
-              {isConnected ? (isWifi ? "Wi-Fi" : "Ethernet") : "Disconnected"}
+              {isConnected
+                ? isWifi
+                  ? "Wi-Fi"
+                  : "Ethernet"
+                : network === null
+                ? "Detecting..."
+                : "Disconnected"}
             </span>
 
             {/* DNS Mode Badge: Static DNS vs DHCP */}
             <span
               className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold shrink-0 transition-all ${
-                isDhcp
-                  ? "bg-blue-500/15 text-blue-300 border border-blue-500/30"
-                  : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm"
+                network === null
+                  ? "bg-slate-100 text-slate-500 border border-slate-300 dark:bg-slate-800/60 dark:text-slate-500 dark:border-slate-700/40"
+                  : isDhcp
+                  ? "bg-blue-50 text-blue-800 border border-blue-300 dark:bg-blue-500/15 dark:text-blue-300 dark:border-blue-500/30"
+                  : "bg-indigo-50 text-indigo-800 border border-indigo-300 shadow-xs dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/40"
               }`}
             >
-              {isDhcp ? "DHCP" : "Static DNS"}
+              {network === null ? "..." : isDhcp ? "DHCP" : "Static DNS"}
             </span>
 
             {/* VPN Active Badge */}
             {vpnActive && (
               <span
                 title="VPN active: traffic and DNS queries route through the tunnel."
-                className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0"
+                className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-800 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/40 shrink-0"
               >
-                <Globe className="w-2.5 h-2.5 text-amber-400" />
+                <Globe className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
                 <span>VPN</span>
               </span>
             )}
 
             {/* Inline Active DNS IPs */}
-            <div className="text-[11px] text-slate-400 flex items-center gap-1 truncate shrink-0">
-              <span className="text-slate-500">Active:</span>
-              {currentDns.length > 0 ? (
-                <span className="font-mono text-slate-200 bg-slate-950/80 px-1.5 py-0.5 rounded text-[11px] border border-slate-800/80 select-all">
+            <div className="text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1 truncate shrink-0">
+              <span className="text-slate-500 dark:text-slate-500 font-medium">Active:</span>
+              {network === null ? (
+                <span className="h-3 w-16 bg-slate-200/80 dark:bg-slate-800/80 rounded animate-pulse inline-block" />
+              ) : currentDns.length > 0 ? (
+                <span className="font-mono text-slate-900 dark:text-slate-200 bg-slate-100 dark:bg-slate-950/80 px-1.5 py-0.5 rounded text-[11px] font-semibold border border-slate-300 dark:border-slate-800/80 select-all">
                   {currentDns.join(", ")}
                 </span>
               ) : (
-                <span className="italic text-slate-500 text-[10px]">None</span>
+                <span className="italic text-slate-500 dark:text-slate-500 text-[10px]">None</span>
               )}
             </div>
           </div>
@@ -152,13 +168,13 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             type="button"
             onClick={onToggleAutoFlush}
             title="Automatically flush Windows DNS cache upon changing DNS or DHCP"
-            className={`h-7 flex items-center gap-1 px-2 rounded-lg text-[11px] font-medium border transition-all ${
+            className={`h-7 flex items-center gap-1 px-2 rounded-lg text-[11px] font-semibold border transition-all ${
               autoFlush
-                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25"
-                : "bg-slate-800/80 border-slate-700/80 text-slate-400 hover:bg-slate-700/80"
+                ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:border-emerald-500/40 dark:text-emerald-300 dark:hover:bg-emerald-500/25"
+                : "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200/70 dark:bg-slate-800/80 dark:border-slate-700/80 dark:text-slate-400 dark:hover:bg-slate-700/80"
             }`}
           >
-            <Zap className={`w-3 h-3 ${autoFlush ? "text-emerald-400" : "text-slate-500"}`} />
+            <Zap className={`w-3 h-3 ${autoFlush ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-500"}`} />
             <span>Auto-Flush</span>
           </button>
 
@@ -168,9 +184,9 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             onClick={onFlushCache}
             disabled={loadingFlush}
             title="Flush Windows DNS resolver cache now"
-            className="h-7 flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition-all active:scale-95 disabled:opacity-50"
+            className="h-7 flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-semibold bg-slate-100 hover:bg-slate-200/80 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-slate-700/80 transition-all active:scale-95 disabled:opacity-50 shadow-xs"
           >
-            <RotateCcw className={`w-3 h-3 ${loadingFlush ? "animate-spin text-indigo-400" : "text-slate-400"}`} />
+            <RotateCcw className={`w-3 h-3 ${loadingFlush ? "animate-spin text-indigo-500 dark:text-indigo-400" : "text-slate-500"}`} />
             <span>Flush</span>
           </button>
 
@@ -186,8 +202,8 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             }
             className={`h-7 flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-semibold border transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
               isDhcp
-                ? "bg-slate-800/60 text-slate-500 border-slate-700/40"
-                : "bg-blue-600/30 hover:bg-blue-600/45 border-blue-500/50 text-blue-200 shadow-sm"
+                ? "bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800/60 dark:text-slate-500 dark:border-slate-700/40"
+                : "bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-800 shadow-xs dark:bg-blue-600/30 dark:hover:bg-blue-600/45 dark:border-blue-500/50 dark:text-blue-200"
             }`}
           >
             <Radio className={`w-3 h-3 ${loadingDhcp ? "animate-spin" : ""}`} />
@@ -199,9 +215,9 @@ export const StatusBar: React.FC<StatusBarProps> = ({
             type="button"
             onClick={onOpenProfiles}
             title="Smart Network Profiles & Automation Rules"
-            className="h-7 flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-semibold bg-indigo-600/25 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 transition-all active:scale-95 shadow-sm"
+            className="h-7 flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-300 shadow-xs dark:bg-indigo-600/25 dark:hover:bg-indigo-600/40 dark:text-indigo-300 dark:border-indigo-500/40 transition-all active:scale-95"
           >
-            <Sliders className="w-3 h-3 text-indigo-400" />
+            <Sliders className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
             <span>Smart Profiles</span>
           </button>
         </div>

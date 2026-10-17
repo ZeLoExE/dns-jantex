@@ -18,8 +18,78 @@ pub fn get_active_network() -> Result<ActiveNetworkInfo, String> {
     network::get_active_network_info()
 }
 
+pub fn get_windows_registry_theme() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        let mut cmd = Command::new("reg");
+        cmd.args([
+            "query",
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+        ]);
+        cmd.creation_flags(CREATE_NO_WINDOW);
+        if let Ok(output) = cmd.output() {
+            let out_str = String::from_utf8_lossy(&output.stdout);
+            let mut apps_light = false;
+            let mut sys_light = false;
+            let mut found_any = false;
+
+            for line in out_str.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("AppsUseLightTheme") {
+                    found_any = true;
+                    if trimmed.contains("0x1") {
+                        apps_light = true;
+                    }
+                } else if trimmed.starts_with("SystemUsesLightTheme") {
+                    found_any = true;
+                    if trimmed.contains("0x1") {
+                        sys_light = true;
+                    }
+                }
+            }
+
+            if found_any {
+                if apps_light || sys_light {
+                    return "light".to_string();
+                } else {
+                    return "dark".to_string();
+                }
+            }
+        }
+    }
+    "dark".to_string()
+}
+
+#[tauri::command]
+pub fn get_system_theme(window: tauri::Window) -> Result<String, String> {
+    let reg_theme = get_windows_registry_theme();
+    let t = match reg_theme.as_str() {
+        "light" => Some(tauri::Theme::Light),
+        _ => Some(tauri::Theme::Dark),
+    };
+    let _ = window.set_theme(t);
+    Ok(reg_theme)
+}
+
+#[tauri::command]
+pub fn set_window_theme(window: tauri::Window, theme: String) -> Result<(), String> {
+    let t = match theme.as_str() {
+        "light" => Some(tauri::Theme::Light),
+        "dark" => Some(tauri::Theme::Dark),
+        _ => None,
+    };
+    let _ = window.set_theme(t);
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn get_app_data(state: State<'_, AppState>) -> Result<AppData, String> {
+    let data = state.read().await;
+    Ok(data.clone())
+}
+
+#[tauri::command]
+pub async fn setup(state: State<'_, AppState>) -> Result<AppData, String> {
     let data = state.read().await;
     Ok(data.clone())
 }
@@ -207,6 +277,11 @@ pub async fn check_for_updates(state: State<'_, AppState>) -> Result<Option<Upda
         data.settings.skipped_version.clone()
     };
     updater::check_latest_release(skipped.as_deref()).await
+}
+
+#[tauri::command]
+pub async fn download_and_install_update(download_url: String) -> Result<(), String> {
+    updater::download_and_install_update(&download_url).await
 }
 
 #[tauri::command]

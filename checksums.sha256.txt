@@ -1,0 +1,3 @@
+756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a *DNS-Jantex-v4.0.1-Setup.exe
+499c83a5c28560bbc3cf77294ec1571b6e5bc589568fda72b35f41d430eae07e *DNS-Jantex-v4.0.1-Portable.exe
+756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a *DNSJantex-Setup.exe

@@ -28,8 +28,8 @@ pub async fn check_latest_release(skipped_version: Option<&str>) -> Result<Optio
     let current_version = env!("CARGO_PKG_VERSION").to_string();
 
     let client = reqwest::Client::builder()
-        .user_agent("DNS-Jantex-Desktop-App")
-        .timeout(Duration::from_millis(5000))
+        .user_agent("DNS-Jantex-Updater")
+        .timeout(Duration::from_millis(8000))
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -82,8 +82,8 @@ pub async fn check_latest_release(skipped_version: Option<&str>) -> Result<Optio
 /// Downloads the new installer from GitHub and launches it with elevation, then exits the app.
 pub async fn download_and_install_update(download_url: &str) -> Result<(), String> {
     let client = reqwest::Client::builder()
-        .user_agent("DNS-Jantex-Desktop-App")
-        .timeout(Duration::from_secs(180))
+        .user_agent("DNS-Jantex-Updater")
+        .timeout(Duration::from_secs(300))
         .build()
         .map_err(|e| e.to_string())?;
 
@@ -108,14 +108,24 @@ pub async fn download_and_install_update(download_url: &str) -> Result<(), Strin
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
-        let mut cmd = std::process::Command::new("powershell");
-        cmd.args([
-            "-NoProfile",
-            "-Command",
-            &format!("Start-Process -FilePath '{}' -Verb RunAs", installer_path.to_string_lossy()),
-        ]);
+        let installer_str = installer_path.to_string_lossy().to_string();
+        let current_exe = std::env::current_exe().unwrap_or_else(|_| {
+            std::path::PathBuf::from(r"C:\Program Files\DNS Jantex\DNS Jantex.exe")
+        });
+        let current_exe_str = current_exe.to_string_lossy().to_string();
+
+        // 1. Wait briefly (ping 127.0.0.1 -n 2) for current process to release locks
+        // 2. Run the NSIS installer silently (/S)
+        // 3. Relaunch the updated app (current exe path or Program Files path)
+        let cmd_script = format!(
+            "ping 127.0.0.1 -n 2 > nul & \"{}\" /S & (if exist \"{}\" (start \"\" \"{}\") else (start \"\" \"%ProgramFiles%\\DNS Jantex\\DNS Jantex.exe\"))",
+            installer_str, current_exe_str, current_exe_str
+        );
+
+        let mut cmd = std::process::Command::new("cmd");
+        cmd.args(["/C", &cmd_script]);
         cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-        cmd.spawn().map_err(|e| format!("Failed to spawn installer: {}", e))?;
+        cmd.spawn().map_err(|e| format!("Failed to spawn update installer: {}", e))?;
     }
 
     // Immediately terminate the running app so NSIS installer can replace files without conflict
