@@ -17,7 +17,7 @@
 
 <br/>
 
-<img src="assets/dns-jantex-v4-preview.png" alt="DNS Jantex v4.0.2 UI" width="780" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
+<img src="assets/dns-jantex-v402-preview.png" alt="DNS Jantex v4.0.2 UI" width="780" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
 
 </div>
 
