@@ -53,7 +53,7 @@ pub fn run() {
                 let mut tray_builder = TrayIconBuilder::new()
                     .menu(&menu)
                     .show_menu_on_left_click(false)
-                    .tooltip("DNS Jantex v4.0.1");
+                    .tooltip("DNS Jantex v4.0.2");
 
                 if let Some(icon) = app.default_window_icon() {
                     tray_builder = tray_builder.icon(icon.clone());

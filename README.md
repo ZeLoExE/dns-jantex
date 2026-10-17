@@ -2,13 +2,13 @@
 
 <img src="assets/icon.png" width="100" height="100" alt="DNS Jantex Logo" />
 
-# DNS Jantex v4.0.1
+# DNS Jantex v4.0.2
 
 **Modern, Lightweight Windows DNS & Network Profile Manager**  
 *Re-engineered from scratch with Rust (Tauri v2) & React*
 
 [![Release](https://img.shields.io/github/v/release/ZeLoExE/dns-jantex?style=for-the-badge&color=6366f1)](https://github.com/ZeLoExE/dns-jantex/releases/latest)
-[![VirusTotal Verified](https://img.shields.io/badge/VirusTotal-Verified_Clean-00a86b?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a)
+[![VirusTotal Verified](https://img.shields.io/badge/VirusTotal-Verified_Clean-00a86b?style=for-the-badge&logo=virustotal&logoColor=white)](https://www.virustotal.com/gui/file/d0ab35ba603b53a322efe5886e2905cb1ee47d75340702aa4eb5a27bd30864a7)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2.0-24c8db?style=for-the-badge&logo=tauri&logoColor=white)](https://tauri.app)
 [![Rust](https://img.shields.io/badge/Rust-2021_Edition-dea584?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![React](https://img.shields.io/badge/React-18+-61dafb?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
@@ -17,7 +17,7 @@
 
 <br/>
 
-<img src="assets/dns-jantex-v4-preview.png" alt="DNS Jantex v4.0.1 UI" width="780" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
+<img src="assets/dns-jantex-v4-preview.png" alt="DNS Jantex v4.0.2 UI" width="780" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
 
 </div>
 
@@ -25,9 +25,9 @@
 
 ## 🌟 English Overview
 
-**DNS Jantex v4.0.1** is a high-performance Windows desktop application built from the ground up using **Rust** and **Tauri v2**, paired with a sleek **React + TypeScript + Tailwind CSS** frontend.
+**DNS Jantex v4.0.2** is a high-performance Windows desktop application built from the ground up using **Rust** and **Tauri v2**, paired with a sleek **React + TypeScript + Tailwind CSS** frontend.
 
-### ✨ Key Features in v4.0.1
+### ✨ Key Features in v4.0.2
 - 🔒 **Mandatory UAC Administrator Manifest:** Automatically prompts for Windows Administrator elevation on launch with UAC shield badge—no manual "Run as administrator" needed.
 - 🪟 **Single-Instance Tray Lock & Restore:** If the app is minimized to the System Tray, clicking shortcuts or re-launching restores and focuses the existing window rather than spawning duplicates.
 - 🔄 **Direct One-Click Auto-Updater:** Checks GitHub releases in real time, downloads the NSIS installer to `%TEMP%`, and automatically applies updates with a single click.
@@ -43,9 +43,9 @@
 
 ## 🇮🇷 معرفی فارسی (Persian Overview)
 
-نسخه **DNS Jantex v4.0.1** جدیدترین به‌روزرسانی پایدار برنامه است که با هسته قدرتمند **راست (Rust)** و فریم‌ورک فوق‌سریع **Tauri v2** به همراه رابط کاربری مدرن **React + TypeScript + Tailwind CSS** ارائه شده است.
+نسخه **DNS Jantex v4.0.2** جدیدترین به‌روزرسانی پایدار برنامه است که با هسته قدرتمند **راست (Rust)** و فریم‌ورک فوق‌سریع **Tauri v2** به همراه رابط کاربری مدرن **React + TypeScript + Tailwind CSS** ارائه شده است.
 
-### ✨ ویژگی‌های کلیدی در نسخه ۴.۰.۱
+### ✨ ویژگی‌های کلیدی در نسخه ۴.۰.۲
 - 🔒 **اجرای خودکار با دسترسی Administrator (UAC):** برنامه به صورت پیش‌فرض مانیفست استاندارد ادمین داشته و در تمام دفعات اجرا مستقیماً پنجره درخواست دسترسی UAC ویندوز را نمایش می‌دهد (بدون نیاز به کلیک راست و Run as admin).
 - 🪟 **قفل تک‌نسخه‌ای و بازیابی از کنار ساعت (Single-Instance):** در صورتی که برنامه در System Tray مخفی باشد، با کلیک مجدد روی آیکون برنامه در دسکتاپ، همان پنجره موجود فراخوانی و فعال می‌شود و از باز شدن نمونه تکراری جلوگیری می‌گردد.
 - 🔄 **آپدیتر مستقیم و خودکار:** بررسی انتشار نسخه‌های جدید در گیت‌هاب، دانلود مستقیم فایل نصبی در پس‌زمینه و اجرای خودکار فرآیند ارتقا تنها با یک کلیک.
@@ -74,17 +74,17 @@
 
 ## 📦 Downloads, Checksums & VirusTotal Scans | دانلود، هش‌ها و اسکن ویروس‌توتال
 
-Official releases are hosted exclusively on the [GitHub Releases](https://github.com/ZeLoExE/dns-jantex/releases/latest) page. You can also download the signed checksum manifest [checksums.sha256.txt](https://github.com/ZeLoExE/dns-jantex/releases/download/v4.0.1/checksums.sha256.txt):
+Official releases are hosted exclusively on the [GitHub Releases](https://github.com/ZeLoExE/dns-jantex/releases/latest) page. You can also download the signed checksum manifest [checksums.sha256.txt](https://github.com/ZeLoExE/dns-jantex/releases/download/v4.0.2/checksums.sha256.txt):
 
 | Package | Description | Size | SHA-256 Checksum | VirusTotal Report |
-| :--- | :--- | :--- | :--- | :---: |
-| **`DNS-Jantex-v4.0.1-Setup.exe`** | Official Windows NSIS Installer (Recommended) | ~8.37 MB | `756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a) |
-| **`DNS-Jantex-v4.0.1-Portable.exe`** | Standalone Portable (No install needed) | ~14.9 MB | `499c83a5c28560bbc3cf77294ec1571b6e5bc589568fda72b35f41d430eae07e` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/499c83a5c28560bbc3cf77294ec1571b6e5bc589568fda72b35f41d430eae07e) |
-| **`DNSJantex-Setup.exe`** | Legacy auto-updater compatible package | ~8.37 MB | `756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/756ce8e2fd0cf598dacaa59abef38642fa30443d5e6e74c58f02c6065867d45a) |
+| :--- | :--- | :--- | :--- | :--- | :---: |
+| **`DNS-Jantex-v4.0.2-Setup.exe`** | Official Windows NSIS Installer (Recommended) | ~8.37 MB | `d0ab35ba603b53a322efe5886e2905cb1ee47d75340702aa4eb5a27bd30864a7` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/d0ab35ba603b53a322efe5886e2905cb1ee47d75340702aa4eb5a27bd30864a7) |
+| **`DNS-Jantex-v4.0.2-Portable.exe`** | Standalone Portable (No install needed) | ~14.9 MB | `287e28684732a67d38ac5f38ade97e677cf3774399d1d2e9a98869e744a466a1` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/287e28684732a67d38ac5f38ade97e677cf3774399d1d2e9a98869e744a466a1) |
+| **`DNSJantex-Setup.exe`** | Legacy auto-updater compatible package | ~8.37 MB | `d0ab35ba603b53a322efe5886e2905cb1ee47d75340702aa4eb5a27bd30864a7` | [🛡️ View VirusTotal Scan](https://www.virustotal.com/gui/file/d0ab35ba603b53a322efe5886e2905cb1ee47d75340702aa4eb5a27bd30864a7) |
 
 ### Verify Checksum on your PC (PowerShell):
 ```powershell
-Get-FileHash -Path "DNS-Jantex-v4.0.1-Setup.exe" -Algorithm SHA256
+Get-FileHash -Path "DNS-Jantex-v4.0.2-Setup.exe" -Algorithm SHA256
 ```
 
 ---

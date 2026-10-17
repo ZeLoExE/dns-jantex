@@ -1,6 +1,6 @@
 [package]
 name = "dns-jantex"
-version = "4.0.1"
+version = "4.0.2"
 description = "Modern Windows DNS & Network Profile Manager"
 authors = ["ZeLoExE"]
 edition = "2021"
